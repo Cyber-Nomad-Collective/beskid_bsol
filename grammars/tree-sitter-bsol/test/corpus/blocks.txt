@@ -1,0 +1,17 @@
+==================
+Simple block
+==================
+
+demo {
+  name = "demo"
+}
+
+---
+
+(source_file
+  (block
+    kind: (identifier)
+    body: (block_body
+      (assignment
+        key: (identifier)
+        value: (string))))))

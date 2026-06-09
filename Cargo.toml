@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/bsol-syntax",
+    "crates/bsol-schema",
+    "crates/bsol-pipeline",
+    "crates/bsol-analysis",
+    "crates/bsol-lsp",
+    "crates/bsol",
+    "crates/bsol-beskid-bridge",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Cyber-Nomad-Collective/beskid_bsol"
+authors = ["Cyber Nomad Collective"]
+
+[workspace.dependencies]
+pest = "2.8"
+pest_derive = "2.8"
+thiserror = "2.0"
+bsol-syntax = { path = "crates/bsol-syntax" }
+bsol-schema = { path = "crates/bsol-schema" }
+bsol-pipeline = { path = "crates/bsol-pipeline" }
+bsol-analysis = { path = "crates/bsol-analysis" }
+bsol-lsp = { path = "crates/bsol-lsp" }
+bsol = { path = "crates/bsol" }
+tower-lsp = "0.20"
+tokio = { version = "1", features = ["full"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"

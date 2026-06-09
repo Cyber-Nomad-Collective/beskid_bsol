@@ -1,0 +1,21 @@
+[package]
+name = "bsol-analysis"
+version.workspace = true
+edition.workspace = true
+description = "BSOL schema resolution, validation, and semantic rules"
+readme = "../../README.md"
+keywords = ["bsol", "validation", "schema"]
+categories = ["config"]
+
+[features]
+default = []
+git = []
+
+[dependencies]
+bsol-pipeline = { workspace = true }
+bsol-schema = { workspace = true }
+bsol-syntax = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

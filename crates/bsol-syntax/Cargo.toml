@@ -1,0 +1,16 @@
+[package]
+name = "bsol-syntax"
+version.workspace = true
+edition.workspace = true
+description = "BSOL parser and generic block AST"
+readme = "../../README.md"
+keywords = ["bsol", "parser", "config"]
+categories = ["parser-implementations"]
+
+[dependencies]
+pest = { workspace = true }
+pest_derive = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

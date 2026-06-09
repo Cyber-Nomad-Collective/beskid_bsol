@@ -1,0 +1,25 @@
+profile "schema.v1" {
+  rule "profile" {
+    scope = top
+    match = keyword
+    keyword = profile
+    label = required
+    cardinality = one
+    nested_extras = true
+    nested "import_schema" {
+      match = keyword
+      keyword = import_schema
+      label = required
+      cardinality = many
+      extras = true
+    }
+    nested "rule" {
+      match = keyword
+      keyword = rule
+      label = required
+      cardinality = many
+      nested_extras = true
+      extras = true
+    }
+  }
+}

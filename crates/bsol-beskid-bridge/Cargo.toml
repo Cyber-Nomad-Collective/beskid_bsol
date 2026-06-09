@@ -1,0 +1,16 @@
+[package]
+name = "bsol-beskid-bridge"
+version.workspace = true
+edition.workspace = true
+description = "BSOL schema import resolution via Beskid project materialization"
+publish = false
+readme = "../../README.md"
+
+[dependencies]
+bsol-analysis = { workspace = true }
+bsol-schema = { workspace = true }
+bsol-syntax = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

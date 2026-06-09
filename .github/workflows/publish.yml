@@ -1,0 +1,27 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+env:
+  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish bsol-syntax
+        run: cargo publish -p bsol-syntax --allow-dirty
+      - name: Publish bsol-schema
+        run: cargo publish -p bsol-schema --allow-dirty
+      - name: Publish bsol-pipeline
+        run: cargo publish -p bsol-pipeline --allow-dirty
+      - name: Publish bsol-analysis
+        run: cargo publish -p bsol-analysis --allow-dirty
+      - name: Publish bsol
+        run: cargo publish -p bsol --allow-dirty
+      - name: Publish bsol-lsp
+        run: cargo publish -p bsol-lsp --allow-dirty

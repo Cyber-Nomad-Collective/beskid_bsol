@@ -1,0 +1,15 @@
+[package]
+name = "bsol-pipeline"
+version.workspace = true
+edition.workspace = true
+description = "BSOL analysis pipeline phases and session"
+readme = "../../README.md"
+keywords = ["bsol", "pipeline"]
+categories = ["config"]
+
+[dependencies]
+bsol-schema = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

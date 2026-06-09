@@ -1,0 +1,15 @@
+[package]
+name = "bsol-schema"
+version.workspace = true
+edition.workspace = true
+description = "BSOL schema profile models and loader"
+readme = "../../README.md"
+keywords = ["bsol", "schema", "validation"]
+categories = ["config"]
+
+[dependencies]
+bsol-syntax = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

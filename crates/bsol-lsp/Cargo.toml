@@ -1,0 +1,22 @@
+[package]
+name = "bsol-lsp"
+version.workspace = true
+edition.workspace = true
+description = "Language server for BSOL documents"
+readme = "../../README.md"
+keywords = ["bsol", "lsp"]
+categories = ["development-tools"]
+
+[[bin]]
+name = "bsol-lsp"
+path = "src/main.rs"
+
+[dependencies]
+bsol = { workspace = true }
+bsol-analysis = { workspace = true }
+bsol-syntax = { workspace = true }
+tokio = { workspace = true }
+tower-lsp = { workspace = true }
+
+[lints]
+workspace = true

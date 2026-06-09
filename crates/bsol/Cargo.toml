@@ -1,0 +1,17 @@
+[package]
+name = "bsol"
+version.workspace = true
+edition.workspace = true
+description = "Beskid Structured Object Language — parser, schema profiles, and validation"
+readme = "../../README.md"
+keywords = ["bsol", "beskid", "schema", "config"]
+categories = ["config", "parser-implementations"]
+
+[dependencies]
+bsol-analysis = { workspace = true }
+bsol-pipeline = { workspace = true }
+bsol-schema = { workspace = true }
+bsol-syntax = { workspace = true }
+
+[lints]
+workspace = true
