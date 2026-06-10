@@ -36,6 +36,14 @@ profile "project.v1" {
       field "maxMetaRounds" { type = u32 required = false }
       field "capabilities" { type = list required = false }
       field "artifactPolicy" { type = enum_or_quoted values = [reuse, rebuild, clean_rebuild] required = false }
+      nested "generatedOutput" {
+        match = keyword
+        keyword = generatedOutput
+        label = forbidden
+        cardinality = many
+        field "layout" { type = quoted required = true }
+        field "root" { type = quoted required = false }
+      }
     }
     nested "template" {
       match = keyword
@@ -44,6 +52,22 @@ profile "project.v1" {
       cardinality = zero_or_one
       field "shortName" { type = quoted required = false }
       field "identity" { type = quoted required = false }
+    }
+    nested "grammar" {
+      match = keyword
+      keyword = grammar
+      label = forbidden
+      cardinality = zero_or_one
+      field "roots" { type = list required = false }
+      nested "grammarOutput" {
+        match = keyword
+        keyword = grammarOutput
+        label = forbidden
+        cardinality = many
+        field "pest" { type = quoted required = true }
+        field "module" { type = quoted required = true }
+        field "packageId" { type = quoted required = true }
+      }
     }
   }
   rule "target" {

@@ -18,6 +18,8 @@ const EMBEDDED_PROFILES: &[(&str, &str)] = &[
     ("runtime.v1", include_str!("../../../schemas/runtime.v1.bsol")),
     ("board.v1", include_str!("../../../schemas/board.v1.bsol")),
     ("board.v2", include_str!("../../../schemas/board.v2.bsol")),
+    ("shell.pages.v1", include_str!("../../../schemas/shell.pages.v1.bsol")),
+    ("tools.config.v1", include_str!("../../../schemas/tools.config.v1.bsol")),
 ];
 
 /// Load an embedded schema profile by name (for example `project.v1`).

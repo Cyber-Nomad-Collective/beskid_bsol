@@ -16,6 +16,7 @@ fn all_embedded_profiles_are_well_formed() {
         "runtime.v1",
         "board.v1",
         "board.v2",
+        "shell.pages.v1",
     ] {
         let profile = load_profile(name).unwrap_or_else(|e| panic!("load {name}: {e}"));
         assert_eq!(profile.name, name);
