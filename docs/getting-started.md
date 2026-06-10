@@ -34,11 +34,12 @@ fn main() -> Result<(), bsol::BsolError> {
 
 Profiles live under [`schemas/`](../schemas/) and declare allowed block shapes. Embedded profiles include:
 
-- `project.v1` — `.bproj` manifests
+- `project.v1` / `project.v2` — `.bproj` manifests (v2 adds variants, constraints, migration)
 - `workspace.v1` — `.bws` workspaces
-- `runtime.v1` — runtime manifest BSOL
-- `board.v1` / `board.v2` — shell layout boards
-- `schema.v1` — meta-schema for profile documents
+- `runtime.v1` / `runtime.v2` — runtime manifest BSOL (v2 uses rule inheritance)
+- `board.v1` / `board.v2` / `board.v3` — shell layout boards (v3 uses cross-block refs)
+- `configuration.v1` / `configuration.v2` — shared module and compiler configuration documents
+- `schema.v1` / `schema.v2` — meta-schema for profile documents
 
 ## Custom validators
 
@@ -63,6 +64,15 @@ cargo run -p bsol-lsp
 ```
 
 Connects over stdio with diagnostics from parse + schema validation.
+
+## Migration (v2)
+
+```bash
+beskid migrate-bsol --to project.v2 path/to/file.bproj
+beskid validate-bsol --profile project.v2 --migrate path/to/file.bproj
+```
+
+See [v2 features](language/v2-features.md).
 
 ## Further reading
 

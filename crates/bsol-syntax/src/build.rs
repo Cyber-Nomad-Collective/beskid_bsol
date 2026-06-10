@@ -5,8 +5,9 @@ use pest::error::InputLocation;
 use pest::iterators::Pair;
 
 use crate::ast::{
-    BsolAssignment, BsolBlock, BsolBracketList, BsolDocument, BsolItem, BsolListItem,
-    BsolQuotedString, BsolSpan, BsolValue,
+    BsolAssignment, BsolAttribute, BsolAttributeArg, BsolBlock, BsolBracketList, BsolDocument,
+    BsolInlineMap, BsolItem, BsolListItem, BsolMapEntry, BsolQuotedString, BsolRef, BsolSpan,
+    BsolValue,
 };
 use crate::error::BsolError;
 use crate::parser::{BsolParser, Rule};
@@ -29,6 +30,9 @@ pub fn parse_bsol_document(source: &str) -> Result<BsolDocument, BsolError> {
 
 fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), BsolError> {
     let mut cursor = start;
+    skip_ws_and_comments(source, &mut cursor);
+    let block_start = cursor;
+    let attrs = read_attribute_list(source, &mut cursor)?;
     skip_ws_and_comments(source, &mut cursor);
     let kind_start = cursor;
     let kind = read_ident(source, &mut cursor).ok_or_else(|| {
@@ -73,13 +77,14 @@ fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), Bsol
     })?;
     let body_end = body_close - 1;
     let block_end = body_close;
-    let span = span_at(source, kind_start, block_end);
+    let span = span_at(source, block_start, block_end);
 
     if schemaless {
         let raw = source.get(body_open + 1..body_end).unwrap_or("").to_string();
         return Ok((
             BsolBlock {
                 span,
+                attrs,
                 kind,
                 label,
                 schemaless_body: Some(raw),
@@ -93,6 +98,7 @@ fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), Bsol
     Ok((
         BsolBlock {
             span,
+            attrs,
             kind,
             label,
             schemaless_body: None,
@@ -115,13 +121,18 @@ fn parse_block_items_in_range(
             break;
         }
         let item_start = cursor;
+        let attrs = read_attribute_list(source, &mut cursor)?;
+        skip_ws_and_comments(source, &mut cursor);
+        if source.as_bytes().get(cursor) == Some(&b'@') && !is_schemaless_at(source, cursor) {
+            // attribute-only prefix already consumed; continue
+        }
         let Some(_kind) = read_ident(source, &mut cursor) else {
             break;
         };
         skip_ws_and_comments(source, &mut cursor);
         if source.as_bytes().get(cursor) == Some(&b'=') {
             let assign_end = find_assignment_end(source, item_start, end)?;
-            items.push(parse_assignment_slice(source, item_start, assign_end)?);
+            items.push(parse_assignment_slice(source, item_start, assign_end, attrs)?);
             cursor = assign_end;
             continue;
         }
@@ -149,6 +160,8 @@ fn skip_horizontal_ws(source: &str, cursor: &mut usize) {
 
 fn find_assignment_end(source: &str, start: usize, end: usize) -> Result<usize, BsolError> {
     let mut cursor = start;
+    read_attribute_list(source, &mut cursor)?;
+    skip_horizontal_ws(source, &mut cursor);
     if read_ident(source, &mut cursor).is_none() {
         return Err(BsolError::parse_at(
             span_at(source, start, end.max(start + 1)),
@@ -170,6 +183,12 @@ fn find_assignment_end(source: &str, start: usize, end: usize) -> Result<usize, 
             "missing assignment value",
         ));
     }
+    cursor = scan_value_end(source, cursor, end)?;
+    Ok(cursor.min(end))
+}
+
+fn scan_value_end(source: &str, start: usize, end: usize) -> Result<usize, BsolError> {
+    let mut cursor = start;
     if source.as_bytes().get(cursor) == Some(&b'"') {
         if read_quoted_string(source, &mut cursor).is_none() {
             return Err(BsolError::parse_at(
@@ -182,13 +201,73 @@ fn find_assignment_end(source: &str, start: usize, end: usize) -> Result<usize, 
             BsolError::parse_at(span_at(source, start, end), "unclosed bracket list")
         })?;
         cursor = bracket_end;
+    } else if source.as_bytes().get(cursor) == Some(&b'{') {
+        let brace_end = find_matching_close_brace(source, cursor).ok_or_else(|| {
+            BsolError::parse_at(span_at(source, start, end), "unclosed inline map")
+        })?;
+        cursor = brace_end;
+    } else if source.as_bytes().get(cursor) == Some(&b'@') {
+        read_ref_literal(source, &mut cursor).ok_or_else(|| {
+            BsolError::parse_at(span_at(source, start, end), "invalid reference literal")
+        })?;
+    } else if read_bool_literal(source, &mut cursor).is_some() {
+        // consumed
+    } else if read_type_expr(source, &mut cursor).is_some() {
+        // consumed parameterized type expression (ref(node), list[...], map[...])
     } else if read_bare_token(source, &mut cursor).is_none() {
         return Err(BsolError::parse_at(
             span_at(source, start, end),
             "missing assignment value",
         ));
     }
-    Ok(cursor.min(end))
+    Ok(cursor)
+}
+
+fn read_type_expr(source: &str, cursor: &mut usize) -> Option<()> {
+    let start = *cursor;
+    read_ident(source, cursor)?;
+    skip_horizontal_ws(source, cursor);
+    if source.as_bytes().get(*cursor) == Some(&b'(') {
+        if find_matching_close_paren(source, *cursor).is_none() {
+            *cursor = start;
+            return None;
+        }
+        *cursor = find_matching_close_paren(source, *cursor).unwrap();
+        return Some(());
+    }
+    if source.as_bytes().get(*cursor) == Some(&b'[') {
+        if find_matching_close_bracket(source, *cursor).is_none() {
+            *cursor = start;
+            return None;
+        }
+        *cursor = find_matching_close_bracket(source, *cursor).unwrap();
+        return Some(());
+    }
+    *cursor = start;
+    None
+}
+
+fn find_matching_close_paren(source: &str, open: usize) -> Option<usize> {
+    debug_assert_eq!(source.as_bytes().get(open), Some(&b'('));
+    let mut depth = 0i32;
+    let mut i = open;
+    let mut in_string = false;
+    while i < source.len() {
+        let b = source.as_bytes()[i];
+        match b {
+            b'"' => in_string = !in_string,
+            b'(' if !in_string => depth += 1,
+            b')' if !in_string => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i + 1);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
 }
 
 fn read_bare_token(source: &str, cursor: &mut usize) -> Option<()> {
@@ -201,12 +280,62 @@ fn read_bare_token(source: &str, cursor: &mut usize) -> Option<()> {
             }
             *cursor += ch.len_utf8();
         }
-    } else if first.is_ascii_alphabetic() || first == '_' {
+    } else     if first.is_ascii_alphabetic() || first == '_' {
         read_ident(source, cursor)?;
     } else {
         return None;
     }
     (*cursor > start).then_some(())
+}
+
+fn read_bool_literal(source: &str, cursor: &mut usize) -> Option<bool> {
+    for (text, value) in [("true", true), ("false", false)] {
+        if source[*cursor..].starts_with(text) {
+            let next = *cursor + text.len();
+            let continues = source[next..]
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_');
+            if !continues {
+                *cursor = next;
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+
+fn read_ref_literal(source: &str, cursor: &mut usize) -> Option<BsolRef> {
+    if source.as_bytes().get(*cursor) != Some(&b'@') {
+        return None;
+    }
+    let start = *cursor;
+    *cursor += 1;
+    if is_schemaless_at(source, start) {
+        *cursor = start;
+        return None;
+    }
+    let rule_kind = read_ident(source, cursor);
+    skip_horizontal_ws(source, cursor);
+    if source.as_bytes().get(*cursor) == Some(&b'/') {
+        *cursor += 1;
+        skip_horizontal_ws(source, cursor);
+        let label = read_ident(source, cursor)?;
+        return Some(BsolRef {
+            span: span_at(source, start, *cursor),
+            rule_kind,
+            label,
+        });
+    }
+    if let Some(label) = rule_kind {
+        return Some(BsolRef {
+            span: span_at(source, start, *cursor),
+            rule_kind: None,
+            label,
+        });
+    }
+    *cursor = start;
+    None
 }
 
 fn find_matching_close_bracket(source: &str, open: usize) -> Option<usize> {
@@ -232,7 +361,12 @@ fn find_matching_close_bracket(source: &str, open: usize) -> Option<usize> {
     None
 }
 
-fn parse_assignment_slice(source: &str, item_start: usize, item_end: usize) -> Result<BsolItem, BsolError> {
+fn parse_assignment_slice(
+    source: &str,
+    item_start: usize,
+    item_end: usize,
+    attrs: Vec<BsolAttribute>,
+) -> Result<BsolItem, BsolError> {
     let raw = source.get(item_start..item_end).unwrap_or("");
     let trim_offset = raw.len().saturating_sub(raw.trim_start().len());
     let base = item_start + trim_offset;
@@ -242,16 +376,25 @@ fn parse_assignment_slice(source: &str, item_start: usize, item_end: usize) -> R
     let pair = pairs
         .next()
         .ok_or_else(|| BsolError::Parse("Bsol parse produced no assignment pair".to_string()))?;
-    Ok(BsolItem::Assignment(build_assignment(pair, source, base)?))
+    Ok(BsolItem::Assignment(build_assignment(
+        pair, source, base, attrs,
+    )?))
 }
 
 fn build_assignment(
     pair: Pair<Rule>,
     source: &str,
     base: usize,
+    outer_attrs: Vec<BsolAttribute>,
 ) -> Result<BsolAssignment, BsolError> {
     let span = span_at(source, base + pair.as_span().start(), base + pair.as_span().end());
     let mut inner = pair.into_inner();
+    let mut attrs = outer_attrs;
+    if let Some(next) = inner.peek() {
+        if next.as_rule() == Rule::attribute_list {
+            attrs.extend(build_attribute_list(inner.next().unwrap(), source, base)?);
+        }
+    }
     let key_pair = inner
         .next()
         .ok_or_else(|| BsolError::parse_at(span, "missing assignment key"))?;
@@ -260,7 +403,59 @@ fn build_assignment(
         .next()
         .ok_or_else(|| BsolError::parse_at(span, "missing assignment value"))?;
     let value = build_value(value_pair, source, base)?;
-    Ok(BsolAssignment { span, key, value })
+    Ok(BsolAssignment {
+        span,
+        attrs,
+        key,
+        value,
+    })
+}
+
+fn build_attribute_list(
+    pair: Pair<Rule>,
+    source: &str,
+    source_offset: usize,
+) -> Result<Vec<BsolAttribute>, BsolError> {
+    let mut attrs = Vec::new();
+    for child in pair.into_inner() {
+        if child.as_rule() == Rule::attribute {
+            attrs.push(build_attribute(child, source, source_offset)?);
+        }
+    }
+    Ok(attrs)
+}
+
+fn build_attribute(
+    pair: Pair<Rule>,
+    source: &str,
+    source_offset: usize,
+) -> Result<BsolAttribute, BsolError> {
+    let span = offset_span(source, source_offset, pair.as_span());
+    let mut inner = pair.into_inner();
+    let name = inner
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "missing attribute name"))?
+        .as_str()
+        .to_string();
+    let mut args = Vec::new();
+    if let Some(args_pair) = inner.next() {
+        for arg_pair in args_pair.into_inner() {
+            if arg_pair.as_rule() == Rule::attribute_arg {
+                let mut arg_inner = arg_pair.into_inner();
+                let key = arg_inner
+                    .next()
+                    .ok_or_else(|| BsolError::parse_at(span, "missing attribute arg key"))?
+                    .as_str()
+                    .to_string();
+                let value_pair = arg_inner
+                    .next()
+                    .ok_or_else(|| BsolError::parse_at(span, "missing attribute arg value"))?;
+                let value = build_value(value_pair, source, source_offset)?;
+                args.push(BsolAttributeArg { key, value });
+            }
+        }
+    }
+    Ok(BsolAttribute { span, name, args })
 }
 
 fn build_value(
@@ -277,7 +472,14 @@ fn build_value(
             inner, source, source_offset,
         ))),
         Rule::bare_token => Ok(BsolValue::Ident(inner.as_str().to_string())),
+        Rule::bool_literal => Ok(BsolValue::Bool(inner.as_str() == "true")),
         Rule::bracket_list => Ok(BsolValue::BracketList(build_bracket_list(
+            inner, source, source_offset,
+        )?)),
+        Rule::inline_map => Ok(BsolValue::InlineMap(build_inline_map(
+            inner, source, source_offset,
+        )?)),
+        Rule::ref_literal => Ok(BsolValue::Ref(build_ref_from_pair(
             inner, source, source_offset,
         )?)),
         other => Err(BsolError::parse_at(
@@ -285,6 +487,67 @@ fn build_value(
             format!("unexpected value rule `{other:?}`"),
         )),
     }
+}
+
+fn build_ref_from_pair(
+    pair: Pair<Rule>,
+    source: &str,
+    source_offset: usize,
+) -> Result<BsolRef, BsolError> {
+    let span = offset_span(source, source_offset, pair.as_span());
+    let path = pair
+        .into_inner()
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "empty reference"))?;
+    let mut parts = path.into_inner();
+    let first = parts
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "empty reference path"))?;
+    if first.as_rule() == Rule::ident {
+        if let Some(second) = parts.next() {
+            return Ok(BsolRef {
+                span,
+                rule_kind: Some(first.as_str().to_string()),
+                label: second.as_str().to_string(),
+            });
+        }
+        return Ok(BsolRef {
+            span,
+            rule_kind: None,
+            label: first.as_str().to_string(),
+        });
+    }
+    Err(BsolError::parse_at(span, "invalid reference path"))
+}
+
+fn build_inline_map(
+    pair: Pair<Rule>,
+    source: &str,
+    source_offset: usize,
+) -> Result<BsolInlineMap, BsolError> {
+    let span = offset_span(source, source_offset, pair.as_span());
+    let mut entries = Vec::new();
+    for child in pair.into_inner() {
+        if child.as_rule() == Rule::map_entry {
+            let entry_span = offset_span(source, source_offset, child.as_span());
+            let mut inner = child.into_inner();
+            let key = inner
+                .next()
+                .ok_or_else(|| BsolError::parse_at(entry_span, "missing map key"))?
+                .as_str()
+                .to_string();
+            let value_pair = inner
+                .next()
+                .ok_or_else(|| BsolError::parse_at(entry_span, "missing map value"))?;
+            let value = build_value(value_pair, source, source_offset)?;
+            entries.push(BsolMapEntry {
+                span: entry_span,
+                key,
+                value,
+            });
+        }
+    }
+    Ok(BsolInlineMap { span, entries })
 }
 
 fn build_quoted_string(
@@ -335,6 +598,24 @@ fn build_list_item(
                 )));
             }
             Rule::ident => return Ok(BsolListItem::Ident(inner.as_str().to_string())),
+            Rule::bool_literal => {
+                return Ok(BsolListItem::Bool(inner.as_str() == "true"));
+            }
+            Rule::ref_literal => {
+                return Ok(BsolListItem::Ref(build_ref_from_pair(
+                    inner, source, source_offset,
+                )?));
+            }
+            Rule::inline_map => {
+                return Ok(BsolListItem::InlineMap(build_inline_map(
+                    inner, source, source_offset,
+                )?));
+            }
+            Rule::inline_block => {
+                return Ok(BsolListItem::InlineBlock(build_inline_block(
+                    inner, source, source_offset,
+                )?));
+            }
             _ => {}
         }
     }
@@ -342,6 +623,258 @@ fn build_list_item(
         span,
         format!("unexpected list item `{text}`"),
     ))
+}
+
+fn build_inline_block(
+    pair: Pair<Rule>,
+    source: &str,
+    source_offset: usize,
+) -> Result<BsolBlock, BsolError> {
+    let span = offset_span(source, source_offset, pair.as_span());
+    let raw = pair.as_str();
+    let mut inner = pair.into_inner();
+    let kind = inner
+        .find(|p| p.as_rule() == Rule::block_kind)
+        .map(|p| p.as_str().to_string())
+        .or_else(|| {
+            raw.split('{')
+                .next()
+                .map(|s| s.split_whitespace().next().unwrap_or("").to_string())
+                .filter(|s| !s.is_empty())
+        })
+        .ok_or_else(|| BsolError::parse_at(span, "missing inline block kind"))?;
+    let label = inner.find(|p| p.as_rule() == Rule::quoted_string).map(|p| {
+        BsolQuotedString::new(offset_span(source, source_offset, p.as_span()), p.as_str())
+    });
+    let mut items = Vec::new();
+    if let Some(body) = inner.find(|p| p.as_rule() == Rule::block_body) {
+        for item in body.into_inner() {
+            match item.as_rule() {
+                Rule::assignment => {
+                    items.push(BsolItem::Assignment(build_assignment(
+                        item,
+                        source,
+                        source_offset,
+                        Vec::new(),
+                    )?));
+                }
+                Rule::block => {
+                    items.push(BsolItem::Block(build_inline_block_as_block(
+                        item, source, source_offset,
+                    )?));
+                }
+                _ => {}
+            }
+        }
+    } else if let (Some(open), Some(close)) = (raw.find('{'), raw.rfind('}')) {
+        let body_text = &raw[open + 1..close];
+        if let Ok(mut parsed) = BsolParser::parse(Rule::block_body, body_text) {
+            if let Some(body_pair) = parsed.next() {
+                for item in body_pair.into_inner() {
+                    if item.as_rule() == Rule::assignment {
+                        items.push(BsolItem::Assignment(build_assignment(
+                            item,
+                            source,
+                            source_offset + open + 1,
+                            Vec::new(),
+                        )?));
+                    }
+                }
+            }
+        }
+    } else {
+        return Err(BsolError::parse_at(span, "missing inline block body"));
+    }
+    Ok(BsolBlock {
+        span,
+        attrs: Vec::new(),
+        kind,
+        label,
+        schemaless_body: None,
+        items,
+    })
+}
+
+fn build_inline_block_as_block(
+    pair: Pair<Rule>,
+    source: &str,
+    source_offset: usize,
+) -> Result<BsolBlock, BsolError> {
+    let span = offset_span(source, source_offset, pair.as_span());
+    let mut inner = pair.into_inner();
+    let mut attrs = Vec::new();
+    if let Some(next) = inner.peek() {
+        if next.as_rule() == Rule::attribute_list {
+            attrs = build_attribute_list(inner.next().unwrap(), source, source_offset)?;
+        }
+    }
+    let kind = inner
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "missing block kind"))?
+        .as_str()
+        .to_string();
+    let label = inner.find(|p| p.as_rule() == Rule::quoted_string).map(|p| {
+        BsolQuotedString::new(offset_span(source, source_offset, p.as_span()), p.as_str())
+    });
+    let body = inner
+        .find(|p| p.as_rule() == Rule::block_body)
+        .ok_or_else(|| BsolError::parse_at(span, "missing block body"))?;
+    let mut items = Vec::new();
+    for item in body.into_inner() {
+        match item.as_rule() {
+            Rule::assignment => {
+                items.push(BsolItem::Assignment(build_assignment(
+                    item,
+                    source,
+                    source_offset,
+                    Vec::new(),
+                )?));
+            }
+            Rule::block => {
+                items.push(BsolItem::Block(build_inline_block_as_block(
+                    item, source, source_offset,
+                )?));
+            }
+            _ => {}
+        }
+    }
+    Ok(BsolBlock {
+        span,
+        attrs,
+        kind,
+        label,
+        schemaless_body: None,
+        items,
+    })
+}
+
+fn read_attribute_list(source: &str, cursor: &mut usize) -> Result<Vec<BsolAttribute>, BsolError> {
+    let mut attrs = Vec::new();
+    loop {
+        skip_ws_and_comments(source, cursor);
+        if source.as_bytes().get(*cursor) == Some(&b'[') {
+            let start = *cursor;
+            *cursor += 1;
+            let name = read_ident(source, cursor).ok_or_else(|| {
+                BsolError::parse_at(
+                    span_at(source, start, *cursor),
+                    "expected attribute name inside `[`",
+                )
+            })?;
+            skip_horizontal_ws(source, cursor);
+            let mut args = Vec::new();
+            if source.as_bytes().get(*cursor) == Some(&b'(') {
+                *cursor += 1;
+                loop {
+                    skip_horizontal_ws(source, cursor);
+                    if source.as_bytes().get(*cursor) == Some(&b')') {
+                        *cursor += 1;
+                        break;
+                    }
+                    let key = read_ident(source, cursor).ok_or_else(|| {
+                        BsolError::parse_at(
+                            span_at(source, start, *cursor),
+                            "expected attribute argument key",
+                        )
+                    })?;
+                    skip_horizontal_ws(source, cursor);
+                    if source.as_bytes().get(*cursor) != Some(&b'=') {
+                        return Err(BsolError::parse_at(
+                            span_at(source, start, *cursor),
+                            "expected `=` in attribute argument",
+                        ));
+                    }
+                    *cursor += 1;
+                    skip_horizontal_ws(source, cursor);
+                    let value_end = scan_value_end(source, *cursor, source.len())?;
+                    let raw = source.get(*cursor..value_end).unwrap_or("");
+                    let value = parse_value_text(raw, span_at(source, *cursor, value_end))?;
+                    args.push(BsolAttributeArg { key, value });
+                    *cursor = value_end;
+                    skip_horizontal_ws(source, cursor);
+                    if source.as_bytes().get(*cursor) == Some(&b',') {
+                        *cursor += 1;
+                    }
+                }
+            }
+            if source.as_bytes().get(*cursor) != Some(&b']') {
+                return Err(BsolError::parse_at(
+                    span_at(source, start, *cursor),
+                    "expected `]` to close attribute",
+                ));
+            }
+            *cursor += 1;
+            attrs.push(BsolAttribute {
+                span: span_at(source, start, *cursor),
+                name,
+                args,
+            });
+            continue;
+        }
+        if source.as_bytes().get(*cursor) != Some(&b'@') || is_schemaless_at(source, *cursor) {
+            break;
+        }
+        let start = *cursor;
+        *cursor += 1;
+        let name = read_ident(source, cursor).ok_or_else(|| {
+            BsolError::parse_at(
+                span_at(source, start, *cursor),
+                "expected attribute name after `@`",
+            )
+        })?;
+        skip_horizontal_ws(source, cursor);
+        let mut args = Vec::new();
+        if source.as_bytes().get(*cursor) == Some(&b'(') {
+            *cursor += 1;
+            loop {
+                skip_horizontal_ws(source, cursor);
+                if source.as_bytes().get(*cursor) == Some(&b')') {
+                    *cursor += 1;
+                    break;
+                }
+                let key = read_ident(source, cursor).ok_or_else(|| {
+                    BsolError::parse_at(
+                        span_at(source, start, *cursor),
+                        "expected attribute argument key",
+                    )
+                })?;
+                skip_horizontal_ws(source, cursor);
+                if source.as_bytes().get(*cursor) != Some(&b'=') {
+                    return Err(BsolError::parse_at(
+                        span_at(source, start, *cursor),
+                        "expected `=` in attribute argument",
+                    ));
+                }
+                *cursor += 1;
+                skip_horizontal_ws(source, cursor);
+                let value_end = scan_value_end(source, *cursor, source.len())?;
+                let raw = source.get(*cursor..value_end).unwrap_or("");
+                let value = parse_value_text(raw, span_at(source, *cursor, value_end))?;
+                args.push(BsolAttributeArg { key, value });
+                *cursor = value_end;
+                skip_horizontal_ws(source, cursor);
+                if source.as_bytes().get(*cursor) == Some(&b',') {
+                    *cursor += 1;
+                }
+            }
+        }
+        attrs.push(BsolAttribute {
+            span: span_at(source, start, *cursor),
+            name,
+            args,
+        });
+    }
+    Ok(attrs)
+}
+
+fn parse_value_text(raw: &str, span: BsolSpan) -> Result<BsolValue, BsolError> {
+    let trimmed = raw.trim();
+    let mut pairs = BsolParser::parse(Rule::value, trimmed)
+        .map_err(|err| BsolError::parse_at(span, err.to_string()))?;
+    let pair = pairs
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "empty attribute value"))?;
+    build_value(pair, trimmed, 0)
 }
 
 fn read_ident(source: &str, cursor: &mut usize) -> Option<String> {
@@ -379,18 +912,18 @@ fn read_quoted_string(source: &str, cursor: &mut usize) -> Option<String> {
     None
 }
 
-fn read_schemaless_marker(source: &str, cursor: &mut usize) -> bool {
-    let marker = "@schemaless";
-    if source[*cursor..].starts_with(marker) {
-        let next = cursor.saturating_add(marker.len());
-        let continues_ident = source[next..]
+fn is_schemaless_at(source: &str, cursor: usize) -> bool {
+    source[cursor..].starts_with("@schemaless")
+        && !source[cursor + "@schemaless".len()..]
             .chars()
             .next()
-            .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_');
-        if !continues_ident {
-            *cursor = next;
-            return true;
-        }
+            .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+fn read_schemaless_marker(source: &str, cursor: &mut usize) -> bool {
+    if is_schemaless_at(source, *cursor) {
+        *cursor += "@schemaless".len();
+        return true;
     }
     false
 }
@@ -518,4 +1051,41 @@ target "t" {
         assert!(block.items.is_empty());
     }
 
+    #[test]
+    fn parse_v2_values() {
+        let src = r#"demo {
+  enabled = true
+  root = @node/main
+  env = { DEBUG = "1", PORT = 8080 }
+  tags = [a, @node/x, node { kind = panel }]
+}
+"#;
+        let doc = parse_bsol_document(src).expect("parse");
+        let block = &doc.blocks[0];
+        let assign = |key: &str| {
+            block
+                .items
+                .iter()
+                .find_map(|item| match item {
+                    BsolItem::Assignment(a) if a.key == key => Some(a),
+                    _ => None,
+                })
+                .expect(key)
+        };
+        assert!(matches!(assign("enabled").value, BsolValue::Bool(true)));
+        assert!(matches!(assign("root").value, BsolValue::Ref(_)));
+        assert!(matches!(assign("env").value, BsolValue::InlineMap(_)));
+        assert!(matches!(assign("tags").value, BsolValue::BracketList(_)));
+    }
+
+    #[test]
+    fn parse_attributes() {
+        let src = r#"[Deprecated(since = "2.0")]
+demo {
+  name = "demo"
+}
+"#;
+        let doc = parse_bsol_document(src).expect("parse");
+        assert_eq!(doc.blocks[0].attrs[0].name, "Deprecated");
+    }
 }

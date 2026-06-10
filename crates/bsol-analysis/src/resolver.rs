@@ -69,6 +69,44 @@ pub fn resolve_profile(
     Ok(collection)
 }
 
+/// Compose the active validation profile from imports, extends, and overlays.
+pub fn resolve_active_profile(
+    profile: SchemaProfile,
+    base_dir: &Path,
+    source: &dyn SchemaSource,
+) -> Result<SchemaProfile, BsolError> {
+    let collection = resolve_profile(profile.clone(), base_dir, source)?;
+    let mut active = collection
+        .get(&profile.name)
+        .cloned()
+        .unwrap_or(profile);
+
+    for import in &active.imports.clone() {
+        let key = import.alias.clone().unwrap_or_else(|| import.name.clone());
+        if let Some(imported) = collection.get(&key) {
+            active = bsol_schema::merge_profiles(imported.clone(), active);
+        } else if let Ok(imported) = source.resolve(import, base_dir) {
+            active = bsol_schema::merge_profiles(imported, active);
+        }
+    }
+
+    for extend in &active.extends.clone() {
+        if let Some(base) = collection.get(&extend.base) {
+            active = bsol_schema::merge_profiles(base.clone(), active);
+        } else if let Ok(base) = load_profile_from_source_by_name(&extend.base) {
+            let mut overlay = active.clone();
+            overlay.extends = vec![extend.clone()];
+            active = bsol_schema::merge_profiles(base, overlay);
+        }
+    }
+
+    bsol_schema::compose_profile(active)
+}
+
+fn load_profile_from_source_by_name(name: &str) -> Result<SchemaProfile, BsolError> {
+    bsol_schema::load_profile(name)
+}
+
 fn resolve_profile_into(
     collection: &mut SchemaCollection,
     profile: SchemaProfile,

@@ -7,19 +7,26 @@ use bsol_syntax::{BsolBlock, BsolDocument, BsolItem, BsolListItem, BsolValue, pa
 
 use crate::error::BsolError;
 use crate::{
-    BlockRule, Cardinality, FieldRule, ImportSchemaSpec, ImportSource, KindMatch, LabelRequirement,
-    RuleScope, SchemaProfile, ValueType,
+    BlockRule, Cardinality, ExtendSpec, FieldConstraints, FieldRule, ImportSchemaSpec,
+    ImportSource, KindMatch, LabelRequirement, MigrationRewrite, MigrationSpec,
+    MigrationWhenClause, RuleScope, SchemaProfile, ValueType, VariantRule,
 };
 
 const EMBEDDED_PROFILES: &[(&str, &str)] = &[
     ("schema.v1", include_str!("../../../schemas/schema.v1.bsol")),
+    ("schema.v2", include_str!("../../../schemas/schema.v2.bsol")),
     ("project.v1", include_str!("../../../schemas/project.v1.bsol")),
+    ("project.v2", include_str!("../../../schemas/project.v2.bsol")),
     ("workspace.v1", include_str!("../../../schemas/workspace.v1.bsol")),
     ("runtime.v1", include_str!("../../../schemas/runtime.v1.bsol")),
+    ("runtime.v2", include_str!("../../../schemas/runtime.v2.bsol")),
     ("board.v1", include_str!("../../../schemas/board.v1.bsol")),
     ("board.v2", include_str!("../../../schemas/board.v2.bsol")),
+    ("board.v3", include_str!("../../../schemas/board.v3.bsol")),
     ("shell.pages.v1", include_str!("../../../schemas/shell.pages.v1.bsol")),
     ("tools.config.v1", include_str!("../../../schemas/tools.config.v1.bsol")),
+    ("configuration.v1", include_str!("../../../schemas/configuration.v1.bsol")),
+    ("configuration.v2", include_str!("../../../schemas/configuration.v2.bsol")),
 ];
 
 /// Load an embedded schema profile by name (for example `project.v1`).
@@ -40,7 +47,8 @@ pub fn load_profile_from_source(source: &str) -> Result<SchemaProfile, BsolError
 
 /// Parse and load a profile from an already-parsed document.
 pub fn load_profile_from_document(document: &BsolDocument) -> Result<SchemaProfile, BsolError> {
-    parse_profile_document(document)
+    let profile = parse_profile_document(document)?;
+    crate::compose::compose_profile(profile)
 }
 
 /// Load a profile from a filesystem path.
@@ -66,43 +74,57 @@ pub fn parse_profile_document(document: &BsolDocument) -> Result<SchemaProfile, 
             )
         })?;
 
+    let version = assignment_string(profile_block, "version")?
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
     let mut imports = Vec::new();
+    let mut extends = Vec::new();
+    let mut migrations = Vec::new();
     let mut rules = HashMap::new();
     let mut top_level_order = Vec::new();
     for item in &profile_block.items {
         let BsolItem::Block(rule_block) = item else {
             continue;
         };
-        if rule_block.kind == "import_schema" {
-            imports.push(parse_import_schema(rule_block)?);
-            continue;
+        match rule_block.kind.as_str() {
+            "import_schema" => imports.push(parse_import_schema(rule_block)?),
+            "extend" => extends.push(parse_extend_block(rule_block)?),
+            "migration" => migrations.push(parse_migration_block(rule_block)?),
+            "rule" => {
+                let rule_id = rule_block
+                    .label
+                    .as_ref()
+                    .map(|q| q.value.clone())
+                    .or_else(|| assignment_string(rule_block, "id").ok().flatten())
+                    .ok_or_else(|| {
+                        BsolError::schema_at(
+                            rule_block.span,
+                            "rule block requires a quoted label or `id`",
+                        )
+                    })?;
+                let rule = parse_block_rule(rule_block, RuleScope::TopLevel)?;
+                if rule.scope == RuleScope::TopLevel {
+                    top_level_order.push(rule_id.clone());
+                }
+                rules.insert(rule_id, rule);
+            }
+            other => {
+                return Err(BsolError::schema_at(
+                    rule_block.span,
+                    format!("unexpected item `{other}` inside profile"),
+                ));
+            }
         }
-        if rule_block.kind != "rule" {
-            return Err(BsolError::schema_at(
-                rule_block.span,
-                format!("unexpected item `{}` inside profile", rule_block.kind),
-            ));
-        }
-        let rule_id = rule_block
-            .label
-            .as_ref()
-            .map(|q| q.value.clone())
-            .or_else(|| assignment_string(rule_block, "id").ok().flatten())
-            .ok_or_else(|| {
-                BsolError::schema_at(rule_block.span, "rule block requires a quoted label or `id`")
-            })?;
-        let rule = parse_block_rule(rule_block, RuleScope::TopLevel)?;
-        if rule.scope == RuleScope::TopLevel {
-            top_level_order.push(rule_id.clone());
-        }
-        rules.insert(rule_id, rule);
     }
 
     Ok(SchemaProfile {
         name,
+        version,
         rules,
         top_level_order,
         imports,
+        extends,
+        migrations,
     })
 }
 
@@ -186,10 +208,14 @@ fn parse_block_rule(block: &BsolBlock, default_scope: RuleScope) -> Result<Block
     let allow_extra_fields = parse_bool(block, "extras").unwrap_or(false);
     let allow_extra_nested = parse_bool(block, "nested_extras").unwrap_or(false);
     let schemaless = parse_bool(block, "schemaless").unwrap_or(false);
+    let extends = assignment_string(block, "extends")?;
+    let mixes = assignment_list(block, "mixes").unwrap_or_default();
+    let allowed_attrs = assignment_list(block, "allowed_attrs").unwrap_or_default();
 
     let mut fields = HashMap::new();
     let mut nested = HashMap::new();
     let mut nested_order = Vec::new();
+    let mut variants = Vec::new();
     for item in &block.items {
         match item {
             BsolItem::Block(nested_block) if nested_block.kind == "field" => {
@@ -223,6 +249,9 @@ fn parse_block_rule(block: &BsolBlock, default_scope: RuleScope) -> Result<Block
                 nested_order.push(nested_id.clone());
                 nested.insert(nested_id, nested_rule);
             }
+            BsolItem::Block(nested_block) if nested_block.kind == "variant" => {
+                variants.push(parse_variant_rule(nested_block)?);
+            }
             BsolItem::Assignment(_) => {}
             BsolItem::Block(other) => {
                 return Err(BsolError::schema_at(
@@ -245,6 +274,10 @@ fn parse_block_rule(block: &BsolBlock, default_scope: RuleScope) -> Result<Block
         allow_extra_fields,
         allow_extra_nested,
         schemaless,
+        extends,
+        mixes,
+        variants,
+        allowed_attrs,
     })
 }
 
@@ -252,31 +285,276 @@ fn parse_field_rule(block: &BsolBlock) -> Result<FieldRule, BsolError> {
     let value_type = parse_value_type(block)?;
     let required = parse_bool(block, "required").unwrap_or(false);
     let list_values = assignment_list(block, "list_values").ok().filter(|v| !v.is_empty());
+    let allowed_attrs = assignment_list(block, "allowed_attrs").unwrap_or_default();
+    let constraints = FieldConstraints {
+        default_value: assignment_string(block, "default")?,
+        min: assignment_string(block, "min")?
+            .and_then(|v| v.parse().ok()),
+        max: assignment_string(block, "max")?
+            .and_then(|v| v.parse().ok()),
+        pattern: assignment_string(block, "pattern")?,
+        required_if: parse_if_map(block, "required_if")?,
+        forbid_if: parse_if_map(block, "forbid_if")?,
+    };
     Ok(FieldRule {
         value_type,
         required,
         list_values,
+        constraints,
+        allowed_attrs,
     })
+}
+
+fn parse_if_map(block: &BsolBlock, key: &str) -> Result<HashMap<String, String>, BsolError> {
+    for item in &block.items {
+        let BsolItem::Block(nested) = item else {
+            continue;
+        };
+        if nested.kind != key {
+            continue;
+        }
+        let mut map = HashMap::new();
+        for entry in &nested.items {
+            let BsolItem::Assignment(a) = entry else {
+                continue;
+            };
+            map.insert(a.key.clone(), value_as_string(&a.value)?);
+        }
+        return Ok(map);
+    }
+    Ok(HashMap::new())
+}
+
+fn parse_variant_rule(block: &BsolBlock) -> Result<VariantRule, BsolError> {
+    let name = block
+        .label
+        .as_ref()
+        .map(|q| q.value.clone())
+        .or_else(|| assignment_string(block, "name").ok().flatten())
+        .ok_or_else(|| {
+            BsolError::schema_at(block.span, "`variant` block requires a name label")
+        })?;
+    Ok(VariantRule {
+        name,
+        require: assignment_list(block, "require").unwrap_or_default(),
+        forbid: assignment_list(block, "forbid").unwrap_or_default(),
+    })
+}
+
+fn parse_extend_block(block: &BsolBlock) -> Result<ExtendSpec, BsolError> {
+    let base = block
+        .label
+        .as_ref()
+        .map(|q| q.value.clone())
+        .or_else(|| assignment_string(block, "base").ok().flatten())
+        .ok_or_else(|| {
+            BsolError::schema_at(block.span, "`extend` block requires a base profile label")
+        })?;
+    let mut rules = HashMap::new();
+    for item in &block.items {
+        let BsolItem::Block(rule_block) = item else {
+            continue;
+        };
+        if rule_block.kind != "rule" {
+            continue;
+        }
+        let rule_id = rule_block
+            .label
+            .as_ref()
+            .map(|q| q.value.clone())
+            .ok_or_else(|| {
+                BsolError::schema_at(rule_block.span, "extend rule requires label")
+            })?;
+        rules.insert(rule_id, parse_block_rule(rule_block, RuleScope::TopLevel)?);
+    }
+    Ok(ExtendSpec {
+        base,
+        rules,
+        span: block.span,
+    })
+}
+
+fn parse_migration_block(block: &BsolBlock) -> Result<MigrationSpec, BsolError> {
+    let from = assignment_string(block, "from")?.ok_or_else(|| {
+        BsolError::schema_at(block.span, "`migration` requires `from` profile")
+    })?;
+    let mut detect = HashMap::new();
+    let mut when_clauses = Vec::new();
+    let mut rewrites = Vec::new();
+    for item in &block.items {
+        let BsolItem::Block(nested) = item else {
+            continue;
+        };
+        match nested.kind.as_str() {
+            "detect" => {
+                for entry in &nested.items {
+                    let BsolItem::Assignment(a) = entry else {
+                        continue;
+                    };
+                    detect.insert(a.key.clone(), value_as_string(&a.value)?);
+                }
+            }
+            "when" => when_clauses.push(parse_migration_when(nested)?),
+            "rewrite" => rewrites.extend(parse_migration_rewrites(nested)?),
+            _ => {}
+        }
+    }
+    Ok(MigrationSpec {
+        from,
+        detect,
+        when_clauses,
+        rewrites,
+        span: block.span,
+    })
+}
+
+fn parse_migration_when(block: &BsolBlock) -> Result<MigrationWhenClause, BsolError> {
+    Ok(MigrationWhenClause {
+        block_kind: assignment_string(block, "block")?,
+        field: assignment_string(block, "field")?,
+        field_value: assignment_string(block, "field_value")?,
+        missing_field: assignment_string(block, "missing_field")?,
+    })
+}
+
+fn parse_migration_rewrites(block: &BsolBlock) -> Result<Vec<MigrationRewrite>, BsolError> {
+    let mut rewrites = Vec::new();
+    for item in &block.items {
+        match item {
+            BsolItem::Assignment(a) if a.key == "add_field" => {
+                if let BsolValue::InlineMap(map) = &a.value {
+                    for entry in &map.entries {
+                        rewrites.push(MigrationRewrite::AddField {
+                            key: entry.key.clone(),
+                            value: value_as_string(&entry.value)?,
+                        });
+                    }
+                }
+            }
+            BsolItem::Assignment(a) if a.key == "rename_field" => {
+                if let BsolValue::InlineMap(map) = &a.value {
+                    for entry in &map.entries {
+                        rewrites.push(MigrationRewrite::RenameField {
+                            from: entry.key.clone(),
+                            to: value_as_string(&entry.value)?,
+                        });
+                    }
+                }
+            }
+            BsolItem::Assignment(a) if a.key == "replace_value" => {
+                let from = assignment_string_in_block(block, "from")?;
+                let to = assignment_string_in_block(block, "to")?;
+                if let (Some(from), Some(to)) = (from, to) {
+                    rewrites.push(MigrationRewrite::ReplaceValue { from, to });
+                }
+            }
+            BsolItem::Block(nested) if nested.kind == "replace_value" => {
+                let from = assignment_string(nested, "from")?;
+                let to = assignment_string(nested, "to")?;
+                if let (Some(from), Some(to)) = (from, to) {
+                    rewrites.push(MigrationRewrite::ReplaceValue { from, to });
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(rewrites)
+}
+
+fn assignment_string_in_block(block: &BsolBlock, key: &str) -> Result<Option<String>, BsolError> {
+    assignment_string(block, key)
 }
 
 fn parse_value_type(block: &BsolBlock) -> Result<ValueType, BsolError> {
     let ty = assignment_string(block, "type")?
         .ok_or_else(|| BsolError::schema_at(block.span, "`field` block requires `type`"))?;
-    match ty.as_str() {
-        "quoted" => Ok(ValueType::Quoted),
-        "ident" => Ok(ValueType::Ident),
-        "u32" => Ok(ValueType::U32),
-        "list" => Ok(ValueType::List),
-        "loose" => Ok(ValueType::Loose),
-        "enum_or_quoted" => {
-            let values = assignment_list(block, "values")?;
-            Ok(ValueType::EnumOrQuoted(values))
-        }
-        other => Err(BsolError::schema_at(
-            block.span,
-            format!("unknown field type `{other}`"),
-        )),
+    if ty == "enum_or_quoted" {
+        let values = assignment_list(block, "values")?;
+        return Ok(ValueType::EnumOrQuoted(values));
     }
+    parse_value_type_text(&ty).map_err(|msg| BsolError::schema_at(block.span, msg))
+}
+
+pub(crate) fn parse_value_type_text(text: &str) -> Result<ValueType, String> {
+    let text = text.trim();
+    if text == "quoted" {
+        return Ok(ValueType::Quoted);
+    }
+    if text == "ident" {
+        return Ok(ValueType::Ident);
+    }
+    if text == "u32" {
+        return Ok(ValueType::U32);
+    }
+    if text == "i64" {
+        return Ok(ValueType::I64);
+    }
+    if text == "f64" {
+        return Ok(ValueType::F64);
+    }
+    if text == "bool" {
+        return Ok(ValueType::Bool);
+    }
+    if text == "path" {
+        return Ok(ValueType::Path);
+    }
+    if text == "list" {
+        return Ok(ValueType::List);
+    }
+    if text == "loose" {
+        return Ok(ValueType::Loose);
+    }
+    if text == "enum_or_quoted" {
+        return Err("enum_or_quoted requires values in field block".into());
+    }
+    if let Some(inner) = text.strip_prefix("list[") {
+        let inner = inner.strip_suffix(']').ok_or("unclosed list type")?;
+        let parts = split_type_union(inner);
+        let mut types = Vec::new();
+        for part in parts {
+            types.push(parse_value_type_text(part)?);
+        }
+        return Ok(ValueType::ListOf(types));
+    }
+    if let Some(inner) = text.strip_prefix("map[") {
+        let inner = inner.strip_suffix(']').ok_or("unclosed map type")?;
+        let (key, value) = inner
+            .split_once(',')
+            .ok_or("map type requires key, value pair")?;
+        return Ok(ValueType::MapOf {
+            key: Box::new(parse_value_type_text(key.trim())?),
+            value: Box::new(parse_value_type_text(value.trim())?),
+        });
+    }
+    if let Some(inner) = text.strip_prefix("ref(") {
+        let rule = inner.strip_suffix(')').ok_or("unclosed ref type")?;
+        return Ok(ValueType::RefTo(rule.to_string()));
+    }
+    if let Some(inner) = text.strip_prefix("inline(") {
+        let rule = inner.strip_suffix(')').ok_or("unclosed inline type")?;
+        return Ok(ValueType::Inline(rule.to_string()));
+    }
+    Err(format!("unknown field type `{text}`"))
+}
+
+fn split_type_union(text: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0usize;
+    for (index, ch) in text.char_indices() {
+        match ch {
+            '[' | '(' => depth += 1,
+            ']' | ')' => depth -= 1,
+            '|' if depth == 0 => {
+                parts.push(text[start..index].trim());
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(text[start..].trim());
+    parts.retain(|p| !p.is_empty());
+    parts
 }
 
 fn parse_kind_match(block: &BsolBlock) -> Result<KindMatch, BsolError> {
@@ -391,7 +669,11 @@ fn value_as_string(value: &BsolValue) -> Result<String, BsolError> {
     match value {
         BsolValue::QuotedString(q) => Ok(q.value.clone()),
         BsolValue::Ident(i) => Ok(i.clone()),
-        BsolValue::BracketList(_) => Err(BsolError::Schema("expected string, found list".into())),
+        BsolValue::Bool(b) => Ok(b.to_string()),
+        BsolValue::Ref(r) => Ok(r.display()),
+        BsolValue::BracketList(_) | BsolValue::InlineMap(_) => {
+            Err(BsolError::Schema("expected string, found structured value".into()))
+        }
     }
 }
 
@@ -405,6 +687,13 @@ fn value_as_list(value: &BsolValue) -> Result<Vec<String>, BsolError> {
             BsolListItem::QuotedString(q) => out.push(q.value.clone()),
             BsolListItem::Ident(i) => out.push(i.clone()),
             BsolListItem::Default => out.push("default".to_string()),
+            BsolListItem::Bool(b) => out.push(b.to_string()),
+            BsolListItem::Ref(r) => out.push(r.display()),
+            BsolListItem::InlineMap(_) | BsolListItem::InlineBlock(_) => {
+                return Err(BsolError::Schema(
+                    "expected flat list item, found structured value".into(),
+                ));
+            }
         }
     }
     Ok(out)
@@ -427,6 +716,15 @@ mod tests {
         let profile = load_profile("schema.v1").expect("load schema.v1");
         assert_eq!(profile.name, "schema.v1");
         assert!(profile.rule("profile").is_some());
+    }
+
+    #[test]
+    fn load_configuration_profile() {
+        let profile = load_profile("configuration.v1").expect("load configuration.v1");
+        assert_eq!(profile.name, "configuration.v1");
+        assert!(profile.rule("config").is_some());
+        assert!(profile.rule("moduleConfig").is_some());
+        assert!(profile.rule("option").is_some());
     }
 
     #[test]

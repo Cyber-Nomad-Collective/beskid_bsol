@@ -16,3 +16,7 @@ pub const SCHEMA_VALIDATE: &str = "schema.validate";
 pub const SCHEMA_SEMANTIC: &str = "schema.semantic";
 /// Immutable validated document boundary.
 pub const SCHEMA_SNAPSHOT: &str = "schema.snapshot";
+/// Plan profile migration routes for a document.
+pub const MIGRATE_PLAN: &str = "migrate.plan";
+/// Apply profile migration rewrites to source text.
+pub const MIGRATE_APPLY: &str = "migrate.apply";

@@ -1,0 +1,33 @@
+profile "board.v3" {
+  version = 2
+  rule "board" {
+    scope = top
+    match = keyword
+    keyword = board
+    label = required
+    cardinality = one
+    field "version" { type = u32 required = true default = 3 }
+    field "title" { type = quoted required = false }
+    field "scope" { type = enum_or_quoted values = [user, project, workspace] required = false }
+    field "root" { type = ref(node) required = true }
+  }
+  rule "node" {
+    scope = top
+    match = keyword
+    keyword = node
+    label = required
+    cardinality = many
+    field "kind" { type = enum_or_quoted values = [col, row, split, tabs, stack, panel] required = true }
+    field "widget" { type = quoted required = false required_if = { kind = panel } }
+    field "grow" { type = u32 required = false }
+    field "min_width" { type = u32 required = false }
+    field "min_height" { type = u32 required = false }
+    field "fixed_width" { type = u32 required = false }
+    field "fixed_height" { type = u32 required = false }
+    field "ratio" { type = u32 required = false }
+    field "children" { type = list[ref(node)|quoted] required = false }
+    field "active" { type = quoted required = false }
+    variant "panel" { require = [widget] }
+    variant "split" { require = [children] }
+  }
+}

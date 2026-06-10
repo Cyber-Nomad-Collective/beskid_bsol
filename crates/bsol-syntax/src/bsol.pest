@@ -10,26 +10,58 @@ HashComment = _{ "#" ~ (!NEWLINE ~ ANY)* }
 
 document = { SOI ~ block* ~ EOI }
 
-block = { block_kind ~ quoted_string? ~ schemaless? ~ "{" ~ block_body ~ "}" }
+block = { attribute_list? ~ block_kind ~ quoted_string? ~ schemaless? ~ "{" ~ block_body ~ "}" }
+attribute_list = { attribute+ }
+attribute = { "@" ~ ident ~ attribute_args? }
+attribute_args = { "(" ~ attribute_arg ~ ("," ~ attribute_arg)* ~ ")" }
+attribute_arg = { ident ~ "=" ~ value }
+
 schemaless = { "@schemaless" }
 block_kind = @{ ident }
 
 block_body = { block_item* }
 block_item = { assignment | block }
 
-assignment = { ident ~ "=" ~ value }
+assignment = { attribute_list? ~ ident ~ "=" ~ value }
 
 value = {
-    bracket_list
+    inline_map
+  | ref_literal
+  | bool_literal
+  | bracket_list
   | quoted_string
   | bare_token
 }
 
+inline_map = { "{" ~ map_entry ~ ("," ~ map_entry)* ~ ","? ~ "}" }
+map_entry = { ident ~ "=" ~ value }
+
+ref_literal = { "@" ~ ref_path }
+ref_path = { (ident ~ "/")? ~ ident }
+
+bool_literal = { "true" | "false" }
+
 bracket_list = { "[" ~ list_content? ~ "]" }
-list_content = { list_item ~ ("," ~ list_item)* }
-list_item = { "default" | quoted_string | ident }
+list_content = { list_item ~ ("," ~ list_item)* ~ ","? }
+list_item = {
+    inline_map
+  | ref_literal
+  | bool_literal
+  | inline_block
+  | "default"
+  | quoted_string
+  | ident
+}
+
+inline_block = { block_kind ~ quoted_string? ~ "{" ~ block_body ~ "}" }
 
 quoted_string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
-bare_token = @{ ident | decimal_unsigned }
+bare_token = @{ type_expr | ident | decimal_unsigned }
+type_expr = { map_type | list_type | ref_type | ident ~ ("(" ~ ident ~ ")") }
+map_type = { "map" ~ "[" ~ type_atom ~ "," ~ type_atom ~ "]" }
+list_type = { "list" ~ "[" ~ type_union ~ "]" }
+ref_type = { "ref" ~ "(" ~ ident ~ ")" }
+type_union = { type_atom ~ ("|" ~ type_atom)* }
+type_atom = { map_type | list_type | ref_type | ident ~ ("(" ~ ident ~ ")")? | ident }
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 decimal_unsigned = @{ ASCII_DIGIT+ }

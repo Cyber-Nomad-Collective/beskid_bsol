@@ -1,8 +1,10 @@
 //! BSOL schema profile models and loader.
 
+mod compose;
 mod error;
 mod load;
 
+pub use compose::{compose_profile, merge_profiles};
 pub use error::BsolError;
 
 use std::collections::HashMap;
@@ -16,9 +18,45 @@ pub use load::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchemaProfile {
     pub name: String,
+    pub version: u32,
     pub rules: HashMap<String, BlockRule>,
     pub top_level_order: Vec<String>,
     pub imports: Vec<ImportSchemaSpec>,
+    pub extends: Vec<ExtendSpec>,
+    pub migrations: Vec<MigrationSpec>,
+}
+
+/// Profile extension overlay.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtendSpec {
+    pub base: String,
+    pub rules: HashMap<String, BlockRule>,
+    pub span: bsol_syntax::BsolSpan,
+}
+
+/// Author-defined migration route between profiles.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MigrationSpec {
+    pub from: String,
+    pub detect: HashMap<String, String>,
+    pub when_clauses: Vec<MigrationWhenClause>,
+    pub rewrites: Vec<MigrationRewrite>,
+    pub span: bsol_syntax::BsolSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MigrationWhenClause {
+    pub block_kind: Option<String>,
+    pub field: Option<String>,
+    pub field_value: Option<String>,
+    pub missing_field: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MigrationRewrite {
+    AddField { key: String, value: String },
+    RenameField { from: String, to: String },
+    ReplaceValue { from: String, to: String },
 }
 
 /// Declarative schema import inside a profile document.
@@ -62,6 +100,18 @@ pub struct BlockRule {
     pub allow_extra_fields: bool,
     pub allow_extra_nested: bool,
     pub schemaless: bool,
+    pub extends: Option<String>,
+    pub mixes: Vec<String>,
+    pub variants: Vec<VariantRule>,
+    pub allowed_attrs: Vec<String>,
+}
+
+/// Discriminated union variant keyed by discriminator field value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariantRule {
+    pub name: String,
+    pub require: Vec<String>,
+    pub forbid: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,12 +144,24 @@ pub enum Cardinality {
     ZeroOrOne,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FieldConstraints {
+    pub default_value: Option<String>,
+    pub min: Option<i64>,
+    pub max: Option<i64>,
+    pub pattern: Option<String>,
+    pub required_if: HashMap<String, String>,
+    pub forbid_if: HashMap<String, String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldRule {
     pub value_type: ValueType,
     pub required: bool,
     /// When set, list elements must match one of these values.
     pub list_values: Option<Vec<String>>,
+    pub constraints: FieldConstraints,
+    pub allowed_attrs: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,7 +169,15 @@ pub enum ValueType {
     Quoted,
     Ident,
     U32,
+    I64,
+    F64,
+    Bool,
+    Path,
     List,
+    ListOf(Vec<ValueType>),
+    MapOf { key: Box<ValueType>, value: Box<ValueType> },
+    RefTo(String),
+    Inline(String),
     EnumOrQuoted(Vec<String>),
     Loose,
 }
@@ -142,5 +212,11 @@ impl BlockRule {
                     .get(kind)
                     .filter(|rule| rule.matches_kind(kind))
             })
+    }
+}
+
+impl ValueType {
+    pub fn parse(text: &str) -> Result<Self, String> {
+        load::parse_value_type_text(text)
     }
 }

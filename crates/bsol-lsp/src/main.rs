@@ -8,6 +8,6 @@ use tower_lsp::{LspService, Server};
 async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
-    let (service, socket) = LspService::new(|client| server::BsolLanguageServer::new(client));
+    let (service, socket) = LspService::new(server::BsolLanguageServer::new);
     Server::new(stdin, stdout, socket).serve(service).await;
 }

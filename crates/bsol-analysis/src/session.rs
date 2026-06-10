@@ -12,8 +12,10 @@ use bsol_pipeline::{
 use bsol_schema::{BsolError, SchemaProfile, load_profile, load_profile_from_source};
 use bsol_syntax::{BsolDocument, parse_bsol_document};
 
+use crate::migrate::{apply_migration, plan_migration};
 use crate::registry::ValidatorRegistry;
-use crate::resolver::{CompositeSchemaSource, resolve_profile};
+use crate::resolver::{CompositeSchemaSource, resolve_active_profile};
+use crate::semantic::resolve_references;
 use crate::validate::{ValidatedDocument, validate_with};
 
 /// Options for a single document analysis run.
@@ -21,6 +23,7 @@ use crate::validate::{ValidatedDocument, validate_with};
 pub struct AnalysisOptions {
     pub profile_name: String,
     pub base_dir: PathBuf,
+    pub migrate: bool,
 }
 
 impl AnalysisOptions {
@@ -28,11 +31,17 @@ impl AnalysisOptions {
         Self {
             profile_name: name.to_string(),
             base_dir: PathBuf::from("."),
+            migrate: false,
         }
     }
 
     pub fn with_base_dir(mut self, base_dir: impl Into<PathBuf>) -> Self {
         self.base_dir = base_dir.into();
+        self
+    }
+
+    pub fn with_migrate(mut self, migrate: bool) -> Self {
+        self.migrate = migrate;
         self
     }
 }
@@ -77,11 +86,24 @@ impl AnalysisSession {
         source: &str,
         options: &AnalysisOptions,
     ) -> Result<ValidatedDocument, BsolError> {
+        let mut working_source = source.to_string();
         let document = observe_phase(self.observer.as_mut(), PARSE_SYNTAX, || {
-            parse_bsol_document(source).map_err(BsolError::from)
+            parse_bsol_document(&working_source).map_err(BsolError::from)
         })?;
 
         let profile = load_profile(&options.profile_name)?;
+        if options.migrate {
+            if let Some(plan) = plan_migration(&document, source, &profile)? {
+                working_source = apply_migration(source, &plan)?;
+            }
+        }
+
+        let document = if options.migrate && working_source != source {
+            parse_bsol_document(&working_source).map_err(BsolError::from)?
+        } else {
+            document
+        };
+
         self.analyze_document(&document, profile, &options.base_dir)
     }
 
@@ -91,19 +113,18 @@ impl AnalysisSession {
         profile: SchemaProfile,
         base_dir: &Path,
     ) -> Result<ValidatedDocument, BsolError> {
-        let profile_name = profile.name.clone();
-        let _collection = observe_phase(self.observer.as_mut(), SCHEMA_COLLECT, || {
-            resolve_profile(profile, base_dir, &self.source)
+        let active = observe_phase(self.observer.as_mut(), SCHEMA_COLLECT, || {
+            resolve_active_profile(profile, base_dir, &self.source)
         })?;
         observe_phase(self.observer.as_mut(), SCHEMA_RESOLVE_FILE, || Ok(()))?;
 
-        let active = load_profile(&profile_name)?;
-
-        let validated = observe_phase(self.observer.as_mut(), SCHEMA_VALIDATE, || {
+        let mut validated = observe_phase(self.observer.as_mut(), SCHEMA_VALIDATE, || {
             validate_with(document, &active, &self.registry)
         })?;
 
-        observe_phase(self.observer.as_mut(), SCHEMA_SEMANTIC, || Ok(()))?;
+        observe_phase(self.observer.as_mut(), SCHEMA_SEMANTIC, || {
+            resolve_references(&mut validated)
+        })?;
         observe_phase(self.observer.as_mut(), SCHEMA_SNAPSHOT, || Ok(()))?;
 
         Ok(validated)
@@ -115,21 +136,22 @@ impl AnalysisSession {
         document: &BsolDocument,
         profile: &SchemaProfile,
     ) -> Result<ValidatedDocument, BsolError> {
-        validate_with(document, profile, &self.registry)
+        let mut validated = validate_with(document, profile, &self.registry)?;
+        resolve_references(&mut validated)?;
+        Ok(validated)
     }
 }
 
-/// Convenience: parse, load embedded profile, validate.
-pub fn analyze_with_profile(
-    source: &str,
-    profile_name: &str,
-) -> Result<ValidatedDocument, BsolError> {
+/// Parse and validate source against a named embedded profile (no import resolution).
+pub fn analyze_with_profile(source: &str, profile_name: &str) -> Result<ValidatedDocument, BsolError> {
     let document = parse_bsol_document(source).map_err(BsolError::from)?;
     let profile = load_profile(profile_name)?;
-    validate_with(&document, &profile, &ValidatorRegistry::default())
+    let mut validated = validate_with(&document, &profile, &ValidatorRegistry::default())?;
+    resolve_references(&mut validated)?;
+    Ok(validated)
 }
 
-/// Load and validate a schema profile document against the meta-schema.
+/// Validate a schema profile document against the meta-schema (`schema.v1`).
 pub fn validate_profile_document(source: &str) -> Result<SchemaProfile, BsolError> {
     let meta = load_profile("schema.v1")?;
     let document = parse_bsol_document(source).map_err(BsolError::from)?;
@@ -142,7 +164,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn analyze_minimal_project_block() {
+    fn analyze_minimal_project_v1() {
         let src = r#"demo {
   name = "demo"
   version = "0.1.0"
@@ -150,6 +172,6 @@ mod tests {
 }
 "#;
         let result = analyze_with_profile(src, "project.v1");
-        assert!(result.is_ok(), "{:?}", result.err());
+        assert!(result.is_ok());
     }
 }

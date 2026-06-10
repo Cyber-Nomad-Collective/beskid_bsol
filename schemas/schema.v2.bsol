@@ -1,0 +1,42 @@
+profile "schema.v2" {
+  version = 2
+  rule "profile" {
+    scope = top
+    match = keyword
+    keyword = profile
+    label = required
+    cardinality = one
+    field "version" { type = u32 required = false default = 2 }
+    nested_extras = true
+    nested "import_schema" {
+      match = keyword
+      keyword = import_schema
+      label = required
+      cardinality = many
+      extras = true
+    }
+    nested "extend" {
+      match = keyword
+      keyword = extend
+      label = required
+      cardinality = many
+      nested_extras = true
+    }
+    nested "migration" {
+      match = keyword
+      keyword = migration
+      label = forbidden
+      cardinality = many
+      nested_extras = true
+      extras = true
+    }
+    nested "rule" {
+      match = keyword
+      keyword = rule
+      label = required
+      cardinality = many
+      nested_extras = true
+      extras = true
+    }
+  }
+}

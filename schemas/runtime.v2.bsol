@@ -1,0 +1,91 @@
+profile "runtime.v2" {
+  version = 2
+  rule "manifest" {
+    scope = top
+    match = keyword
+    keyword = manifest
+    label = forbidden
+    cardinality = one
+    field "abi_version" { type = u32 required = true }
+  }
+  rule "profile" {
+    scope = top
+    match = keyword
+    keyword = profile
+    label = required
+    cardinality = many
+    field "owners" { type = list[ident] required = false }
+  }
+  rule "dispatch_base" {
+    scope = top
+    match = keyword
+    keyword = dispatch_base
+    label = forbidden
+    cardinality = zero_or_one
+    field "tag" { type = u32 required = true }
+    field "dispatch_key" { type = ident required = true }
+    field "name" { type = ident required = true }
+    field "params" { type = list[ident] required = false }
+    field "returns" { type = ident required = true }
+    field "injected" { type = bool required = false default = false }
+    field "beskid_path" { type = list[ident] required = false }
+    field "owner" { type = enum_or_quoted values = [language, host] required = false }
+  }
+  rule "dispatch_usize" {
+    extends = dispatch_base
+    scope = top
+    match = keyword
+    keyword = dispatch_usize
+    label = forbidden
+    cardinality = many
+  }
+  rule "dispatch_ptr" {
+    extends = dispatch_base
+    scope = top
+    match = keyword
+    keyword = dispatch_ptr
+    label = forbidden
+    cardinality = many
+  }
+  rule "dispatch_unit" {
+    extends = dispatch_base
+    scope = top
+    match = keyword
+    keyword = dispatch_unit
+    label = forbidden
+    cardinality = many
+  }
+  rule "dispatch_i64" {
+    extends = dispatch_base
+    scope = top
+    match = keyword
+    keyword = dispatch_i64
+    label = forbidden
+    cardinality = many
+  }
+  rule "kernel" {
+    scope = top
+    match = keyword
+    keyword = kernel
+    label = forbidden
+    cardinality = many
+    field "symbol" { type = ident required = true }
+    field "name" { type = ident required = true }
+    field "params" { type = list[ident] required = false }
+    field "returns" { type = ident required = true }
+    field "injected" { type = bool required = false default = false }
+    field "beskid_path" { type = list[ident] required = false }
+  }
+  rule "intrinsic" {
+    scope = top
+    match = keyword
+    keyword = intrinsic
+    label = forbidden
+    cardinality = many
+    field "symbol" { type = ident required = true }
+    field "path" { type = list[ident] required = false }
+    field "params" { type = list[ident] required = false }
+    field "returns" { type = ident required = true }
+    field "injected" { type = bool required = false default = false }
+  }
+}
