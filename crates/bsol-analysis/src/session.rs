@@ -3,20 +3,21 @@
 use std::path::{Path, PathBuf};
 
 use bsol_pipeline::{
-    NullObserver, PipelineObserver, observe_phase,
+    observe_phase,
     phases::{
         PARSE_SYNTAX, SCHEMA_COLLECT, SCHEMA_RESOLVE_FILE, SCHEMA_SEMANTIC, SCHEMA_SNAPSHOT,
         SCHEMA_VALIDATE,
     },
+    NullObserver, PipelineObserver,
 };
-use bsol_schema::{BsolError, SchemaProfile, load_profile, load_profile_from_source};
-use bsol_syntax::{BsolDocument, parse_bsol_document};
+use bsol_schema::{load_profile, load_profile_from_source, BsolError, SchemaProfile};
+use bsol_syntax::{parse_bsol_document, BsolDocument};
 
 use crate::migrate::{apply_migration, plan_migration};
 use crate::registry::ValidatorRegistry;
-use crate::resolver::{CompositeSchemaSource, resolve_active_profile};
+use crate::resolver::{resolve_active_profile, CompositeSchemaSource};
 use crate::semantic::resolve_references;
-use crate::validate::{ValidatedDocument, validate_with};
+use crate::validate::{validate_with, ValidatedDocument};
 
 /// Options for a single document analysis run.
 #[derive(Debug, Clone)]
@@ -143,7 +144,10 @@ impl AnalysisSession {
 }
 
 /// Parse and validate source against a named embedded profile (no import resolution).
-pub fn analyze_with_profile(source: &str, profile_name: &str) -> Result<ValidatedDocument, BsolError> {
+pub fn analyze_with_profile(
+    source: &str,
+    profile_name: &str,
+) -> Result<ValidatedDocument, BsolError> {
     let document = parse_bsol_document(source).map_err(BsolError::from)?;
     let profile = load_profile(profile_name)?;
     let mut validated = validate_with(&document, &profile, &ValidatorRegistry::default())?;

@@ -1,8 +1,8 @@
 //! Build a [`BsolDocument`] from pest pairs and top-level block scanning.
 
-use pest::Parser;
 use pest::error::InputLocation;
 use pest::iterators::Pair;
+use pest::Parser;
 
 use crate::ast::{
     BsolAssignment, BsolAttribute, BsolAttributeArg, BsolBlock, BsolBracketList, BsolDocument,
@@ -80,7 +80,10 @@ fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), Bsol
     let span = span_at(source, block_start, block_end);
 
     if schemaless {
-        let raw = source.get(body_open + 1..body_end).unwrap_or("").to_string();
+        let raw = source
+            .get(body_open + 1..body_end)
+            .unwrap_or("")
+            .to_string();
         return Ok((
             BsolBlock {
                 span,
@@ -132,7 +135,9 @@ fn parse_block_items_in_range(
         skip_ws_and_comments(source, &mut cursor);
         if source.as_bytes().get(cursor) == Some(&b'=') {
             let assign_end = find_assignment_end(source, item_start, end)?;
-            items.push(parse_assignment_slice(source, item_start, assign_end, attrs)?);
+            items.push(parse_assignment_slice(
+                source, item_start, assign_end, attrs,
+            )?);
             cursor = assign_end;
             continue;
         }
@@ -280,7 +285,7 @@ fn read_bare_token(source: &str, cursor: &mut usize) -> Option<()> {
             }
             *cursor += ch.len_utf8();
         }
-    } else     if first.is_ascii_alphabetic() || first == '_' {
+    } else if first.is_ascii_alphabetic() || first == '_' {
         read_ident(source, cursor)?;
     } else {
         return None;
@@ -387,7 +392,11 @@ fn build_assignment(
     base: usize,
     outer_attrs: Vec<BsolAttribute>,
 ) -> Result<BsolAssignment, BsolError> {
-    let span = span_at(source, base + pair.as_span().start(), base + pair.as_span().end());
+    let span = span_at(
+        source,
+        base + pair.as_span().start(),
+        base + pair.as_span().end(),
+    );
     let mut inner = pair.into_inner();
     let mut attrs = outer_attrs;
     if let Some(next) = inner.peek() {
@@ -469,18 +478,26 @@ fn build_value(
         .ok_or_else(|| BsolError::Parse("empty Bsol value".to_string()))?;
     match inner.as_rule() {
         Rule::quoted_string => Ok(BsolValue::QuotedString(build_quoted_string(
-            inner, source, source_offset,
+            inner,
+            source,
+            source_offset,
         ))),
         Rule::bare_token => Ok(BsolValue::Ident(inner.as_str().to_string())),
         Rule::bool_literal => Ok(BsolValue::Bool(inner.as_str() == "true")),
         Rule::bracket_list => Ok(BsolValue::BracketList(build_bracket_list(
-            inner, source, source_offset,
+            inner,
+            source,
+            source_offset,
         )?)),
         Rule::inline_map => Ok(BsolValue::InlineMap(build_inline_map(
-            inner, source, source_offset,
+            inner,
+            source,
+            source_offset,
         )?)),
         Rule::ref_literal => Ok(BsolValue::Ref(build_ref_from_pair(
-            inner, source, source_offset,
+            inner,
+            source,
+            source_offset,
         )?)),
         other => Err(BsolError::parse_at(
             offset_span(source, source_offset, inner.as_span()),
@@ -550,11 +567,7 @@ fn build_inline_map(
     Ok(BsolInlineMap { span, entries })
 }
 
-fn build_quoted_string(
-    pair: Pair<Rule>,
-    source: &str,
-    source_offset: usize,
-) -> BsolQuotedString {
+fn build_quoted_string(pair: Pair<Rule>, source: &str, source_offset: usize) -> BsolQuotedString {
     let span = offset_span(source, source_offset, pair.as_span());
     BsolQuotedString::new(span, pair.as_str())
 }
@@ -594,7 +607,9 @@ fn build_list_item(
         match inner.as_rule() {
             Rule::quoted_string => {
                 return Ok(BsolListItem::QuotedString(build_quoted_string(
-                    inner, source, source_offset,
+                    inner,
+                    source,
+                    source_offset,
                 )));
             }
             Rule::ident => return Ok(BsolListItem::Ident(inner.as_str().to_string())),
@@ -603,17 +618,23 @@ fn build_list_item(
             }
             Rule::ref_literal => {
                 return Ok(BsolListItem::Ref(build_ref_from_pair(
-                    inner, source, source_offset,
+                    inner,
+                    source,
+                    source_offset,
                 )?));
             }
             Rule::inline_map => {
                 return Ok(BsolListItem::InlineMap(build_inline_map(
-                    inner, source, source_offset,
+                    inner,
+                    source,
+                    source_offset,
                 )?));
             }
             Rule::inline_block => {
                 return Ok(BsolListItem::InlineBlock(build_inline_block(
-                    inner, source, source_offset,
+                    inner,
+                    source,
+                    source_offset,
                 )?));
             }
             _ => {}
@@ -660,7 +681,9 @@ fn build_inline_block(
                 }
                 Rule::block => {
                     items.push(BsolItem::Block(build_inline_block_as_block(
-                        item, source, source_offset,
+                        item,
+                        source,
+                        source_offset,
                     )?));
                 }
                 _ => {}
@@ -732,7 +755,9 @@ fn build_inline_block_as_block(
             }
             Rule::block => {
                 items.push(BsolItem::Block(build_inline_block_as_block(
-                    item, source, source_offset,
+                    item,
+                    source,
+                    source_offset,
                 )?));
             }
             _ => {}
@@ -994,11 +1019,7 @@ fn offset_span(source: &str, offset: usize, span: pest::Span<'_>) -> BsolSpan {
     span_at(source, offset + span.start(), offset + span.end())
 }
 
-fn pest_error_with_offset(
-    source: &str,
-    offset: usize,
-    err: pest::error::Error<Rule>,
-) -> BsolError {
+fn pest_error_with_offset(source: &str, offset: usize, err: pest::error::Error<Rule>) -> BsolError {
     let start = match err.location {
         InputLocation::Pos(pos) => offset + pos,
         InputLocation::Span((start, _)) => offset + start,

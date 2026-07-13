@@ -72,12 +72,9 @@ impl ValidatedValue {
 
     pub fn as_list_strings(&self) -> Option<Vec<String>> {
         match self {
-            ValidatedValue::List(items) => Some(
-                items
-                    .iter()
-                    .filter_map(|v| v.as_string())
-                    .collect(),
-            ),
+            ValidatedValue::List(items) => {
+                Some(items.iter().filter_map(|v| v.as_string()).collect())
+            }
             _ => None,
         }
     }

@@ -42,6 +42,7 @@ profile "runtime.v1" {
     field "injected" { type = enum_or_quoted values = [true, false] required = false }
     field "beskid_path" { type = list required = false }
     field "owner" { type = enum_or_quoted values = [language, host] required = false }
+    field "language_handler" { type = enum_or_quoted values = [true, false] required = false }
   }
   rule "dispatch_ptr" {
     scope = top
@@ -57,6 +58,7 @@ profile "runtime.v1" {
     field "injected" { type = enum_or_quoted values = [true, false] required = false }
     field "beskid_path" { type = list required = false }
     field "owner" { type = enum_or_quoted values = [language, host] required = false }
+    field "language_handler" { type = enum_or_quoted values = [true, false] required = false }
   }
   rule "dispatch_unit" {
     scope = top
@@ -72,6 +74,7 @@ profile "runtime.v1" {
     field "injected" { type = enum_or_quoted values = [true, false] required = false }
     field "beskid_path" { type = list required = false }
     field "owner" { type = enum_or_quoted values = [language, host] required = false }
+    field "language_handler" { type = enum_or_quoted values = [true, false] required = false }
   }
   rule "dispatch_i64" {
     scope = top
@@ -87,6 +90,7 @@ profile "runtime.v1" {
     field "injected" { type = enum_or_quoted values = [true, false] required = false }
     field "beskid_path" { type = list required = false }
     field "owner" { type = enum_or_quoted values = [language, host] required = false }
+    field "language_handler" { type = enum_or_quoted values = [true, false] required = false }
   }
   rule "intrinsic" {
     scope = top

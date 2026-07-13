@@ -48,7 +48,10 @@ impl ValidatedBlock {
 }
 
 /// Validate `document` against `profile`.
-pub fn validate(document: &BsolDocument, profile: &SchemaProfile) -> Result<ValidatedDocument, BsolError> {
+pub fn validate(
+    document: &BsolDocument,
+    profile: &SchemaProfile,
+) -> Result<ValidatedDocument, BsolError> {
     validate_with(document, profile, &ValidatorRegistry::default())
 }
 
@@ -99,7 +102,9 @@ pub fn validate_with(
 }
 
 fn match_top_level_rule<'a>(profile: &'a SchemaProfile, kind: &str) -> Option<&'a BlockRule> {
-    profile.top_level_rules().find(|rule| rule.matches_kind(kind))
+    profile
+        .top_level_rules()
+        .find(|rule| rule.matches_kind(kind))
 }
 
 fn validate_block(
@@ -246,7 +251,11 @@ fn validate_block(
         }
     }
 
-    for nested_rule in rule.nested_order.iter().filter_map(|id| rule.nested.get(id)) {
+    for nested_rule in rule
+        .nested_order
+        .iter()
+        .filter_map(|id| rule.nested.get(id))
+    {
         let count = nested_counts.get(&nested_rule.id).copied().unwrap_or(0);
         match nested_rule.cardinality {
             Cardinality::One if count != 1 => {
@@ -344,7 +353,10 @@ fn apply_defaults(
         if let Some(default) = &field_rule.constraints.default_value {
             fields.insert(name.clone(), default.clone());
             values.insert(name.clone(), ValidatedValue::String(default.clone()));
-            if matches!(field_rule.value_type, ValueType::List | ValueType::ListOf(_)) {
+            if matches!(
+                field_rule.value_type,
+                ValueType::List | ValueType::ListOf(_)
+            ) {
                 lists.insert(
                     name.clone(),
                     default.split(',').map(|s| s.trim().to_string()).collect(),
@@ -388,9 +400,8 @@ fn validate_variants(
     if rule.variants.is_empty() {
         return Ok(());
     }
-    let active = select_variant(&rule.variants, fields).ok_or_else(|| {
-        BsolError::schema_at(span, "no matching variant for block fields")
-    })?;
+    let active = select_variant(&rule.variants, fields)
+        .ok_or_else(|| BsolError::schema_at(span, "no matching variant for block fields"))?;
     for key in &active.require {
         if !fields.contains_key(key) {
             return Err(BsolError::schema_at(
@@ -543,11 +554,9 @@ fn try_list_item_as_type(
         }
         (BsolListItem::Bool(b), ValueType::Bool) => Ok(ValidatedValue::Bool(*b)),
         (BsolListItem::Ref(r), ValueType::RefTo(_)) => Ok(ValidatedValue::Ref(r.clone())),
-        (BsolListItem::InlineBlock(block), ValueType::Inline(kind)) if block.kind == *kind => {
-            Ok(ValidatedValue::Block(Box::new(ValidatedBlockLite::from_block(
-                block,
-            ))))
-        }
+        (BsolListItem::InlineBlock(block), ValueType::Inline(kind)) if block.kind == *kind => Ok(
+            ValidatedValue::Block(Box::new(ValidatedBlockLite::from_block(block))),
+        ),
         _ => Err(BsolError::schema_at(span, "type mismatch")),
     }
 }
@@ -588,12 +597,18 @@ fn apply_numeric_constraints(
 ) -> Result<(), BsolError> {
     if let Some(min) = constraints.min {
         if value < min {
-            return Err(BsolError::schema_at(span, format!("value {value} below min {min}")));
+            return Err(BsolError::schema_at(
+                span,
+                format!("value {value} below min {min}"),
+            ));
         }
     }
     if let Some(max) = constraints.max {
         if value > max {
-            return Err(BsolError::schema_at(span, format!("value {value} above max {max}")));
+            return Err(BsolError::schema_at(
+                span,
+                format!("value {value} above max {max}"),
+            ));
         }
     }
     Ok(())

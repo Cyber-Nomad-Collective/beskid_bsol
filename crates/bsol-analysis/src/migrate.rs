@@ -1,9 +1,11 @@
 //! Author-defined migration patterns between BSOL profile versions.
 
-use bsol_schema::{MigrationRewrite, MigrationSpec, MigrationWhenClause, SchemaProfile, load_profile};
-use bsol_syntax::{BsolDocument, BsolItem, parse_bsol_document};
+use bsol_schema::{
+    load_profile, MigrationRewrite, MigrationSpec, MigrationWhenClause, SchemaProfile,
+};
+use bsol_syntax::{parse_bsol_document, BsolDocument, BsolItem};
 
-use crate::{BsolError, ValidatedDocument, validate_with, ValidatorRegistry};
+use crate::{validate_with, BsolError, ValidatedDocument, ValidatorRegistry};
 
 /// Planned migration route from source profile to target.
 #[derive(Debug, Clone, PartialEq, Eq)]

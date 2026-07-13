@@ -4,13 +4,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use bsol_schema::{
-    BsolError, ImportSchemaSpec, ImportSource, SchemaProfile, load_profile_from_path,
-    load_profile_from_source,
+    load_profile_from_path, load_profile_from_source, BsolError, ImportSchemaSpec, ImportSource,
+    SchemaProfile,
 };
 
 /// Trait for resolving imported schema profiles from external sources.
 pub trait SchemaSource: Send + Sync {
-    fn resolve(&self, spec: &ImportSchemaSpec, base_dir: &Path) -> Result<SchemaProfile, BsolError>;
+    fn resolve(&self, spec: &ImportSchemaSpec, base_dir: &Path)
+        -> Result<SchemaProfile, BsolError>;
 }
 
 /// Resolves schemas from the local filesystem only.
@@ -18,7 +19,11 @@ pub trait SchemaSource: Send + Sync {
 pub struct FileSchemaSource;
 
 impl SchemaSource for FileSchemaSource {
-    fn resolve(&self, spec: &ImportSchemaSpec, base_dir: &Path) -> Result<SchemaProfile, BsolError> {
+    fn resolve(
+        &self,
+        spec: &ImportSchemaSpec,
+        base_dir: &Path,
+    ) -> Result<SchemaProfile, BsolError> {
         match &spec.from {
             ImportSource::File { path } => {
                 let resolved = base_dir.join(path);
@@ -76,10 +81,7 @@ pub fn resolve_active_profile(
     source: &dyn SchemaSource,
 ) -> Result<SchemaProfile, BsolError> {
     let collection = resolve_profile(profile.clone(), base_dir, source)?;
-    let mut active = collection
-        .get(&profile.name)
-        .cloned()
-        .unwrap_or(profile);
+    let mut active = collection.get(&profile.name).cloned().unwrap_or(profile);
 
     for import in &active.imports.clone() {
         let key = import.alias.clone().unwrap_or_else(|| import.name.clone());
@@ -145,7 +147,11 @@ impl CompositeSchemaSource {
 }
 
 impl SchemaSource for CompositeSchemaSource {
-    fn resolve(&self, spec: &ImportSchemaSpec, base_dir: &Path) -> Result<SchemaProfile, BsolError> {
+    fn resolve(
+        &self,
+        spec: &ImportSchemaSpec,
+        base_dir: &Path,
+    ) -> Result<SchemaProfile, BsolError> {
         let mut last_err = None;
         for source in &self.sources {
             match source.resolve(spec, base_dir) {
@@ -185,7 +191,8 @@ pub fn parse_pckg_shorthand(reference: &str) -> Result<(String, String, String),
 
 /// Load profile text from a resolved path (used by bridge implementations).
 pub fn load_profile_text(path: &Path) -> Result<String, BsolError> {
-    std::fs::read_to_string(path).map_err(|e| BsolError::Import(format!("read `{}`: {e}", path.display())))
+    std::fs::read_to_string(path)
+        .map_err(|e| BsolError::Import(format!("read `{}`: {e}", path.display())))
 }
 
 /// Load profile from text after external fetch.

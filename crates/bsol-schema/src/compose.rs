@@ -2,9 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::{
-    BlockRule, ExtendSpec, SchemaProfile,
-};
+use crate::{BlockRule, ExtendSpec, SchemaProfile};
 
 /// Resolve `extends` and `mixes` within a single profile.
 pub fn compose_profile(mut profile: SchemaProfile) -> Result<SchemaProfile, crate::BsolError> {
@@ -28,9 +26,9 @@ fn resolve_rule(
     }
 
     if let Some(base_id) = &rule.extends {
-        let base = all_rules.get(base_id).ok_or_else(|| {
-            crate::BsolError::Schema(format!("unknown base rule `{base_id}`"))
-        })?;
+        let base = all_rules
+            .get(base_id)
+            .ok_or_else(|| crate::BsolError::Schema(format!("unknown base rule `{base_id}`")))?;
         if !resolved.contains_key(base_id) {
             let base_clone = base.clone();
             let composed_base = resolve_rule(base_clone, all_rules, resolved)?;
@@ -41,9 +39,9 @@ fn resolve_rule(
     }
 
     for mix_id in &rule.mixes.clone() {
-        let mix = all_rules.get(mix_id).ok_or_else(|| {
-            crate::BsolError::Schema(format!("unknown mix rule `{mix_id}`"))
-        })?;
+        let mix = all_rules
+            .get(mix_id)
+            .ok_or_else(|| crate::BsolError::Schema(format!("unknown mix rule `{mix_id}`")))?;
         if !resolved.contains_key(mix_id) {
             let mix_clone = mix.clone();
             let composed_mix = resolve_rule(mix_clone, all_rules, resolved)?;
@@ -146,7 +144,9 @@ pub fn merge_profiles(base: SchemaProfile, overlay: SchemaProfile) -> SchemaProf
 fn apply_extend(profile: &mut SchemaProfile, extend: &ExtendSpec) {
     for (id, rule) in &extend.rules {
         if let Some(existing) = profile.rules.get(id) {
-            profile.rules.insert(id.clone(), merge_block_rules(existing, rule));
+            profile
+                .rules
+                .insert(id.clone(), merge_block_rules(existing, rule));
         } else {
             profile.top_level_order.push(id.clone());
             profile.rules.insert(id.clone(), rule.clone());

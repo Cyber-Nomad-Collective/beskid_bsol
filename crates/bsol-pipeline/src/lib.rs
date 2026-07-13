@@ -3,6 +3,4 @@
 mod observer;
 pub mod phases;
 
-pub use observer::{
-    FnObserver, NullObserver, PhaseResult, PipelineObserver, observe_phase,
-};
+pub use observer::{observe_phase, FnObserver, NullObserver, PhaseResult, PipelineObserver};

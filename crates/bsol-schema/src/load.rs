@@ -3,7 +3,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use bsol_syntax::{BsolBlock, BsolDocument, BsolItem, BsolListItem, BsolValue, parse_bsol_document};
+use bsol_syntax::{
+    parse_bsol_document, BsolBlock, BsolDocument, BsolItem, BsolListItem, BsolValue,
+};
 
 use crate::error::BsolError;
 use crate::{
@@ -15,18 +17,45 @@ use crate::{
 const EMBEDDED_PROFILES: &[(&str, &str)] = &[
     ("schema.v1", include_str!("../../../schemas/schema.v1.bsol")),
     ("schema.v2", include_str!("../../../schemas/schema.v2.bsol")),
-    ("project.v1", include_str!("../../../schemas/project.v1.bsol")),
-    ("project.v2", include_str!("../../../schemas/project.v2.bsol")),
-    ("workspace.v1", include_str!("../../../schemas/workspace.v1.bsol")),
-    ("runtime.v1", include_str!("../../../schemas/runtime.v1.bsol")),
-    ("runtime.v2", include_str!("../../../schemas/runtime.v2.bsol")),
+    (
+        "project.v1",
+        include_str!("../../../schemas/project.v1.bsol"),
+    ),
+    (
+        "project.v2",
+        include_str!("../../../schemas/project.v2.bsol"),
+    ),
+    (
+        "workspace.v1",
+        include_str!("../../../schemas/workspace.v1.bsol"),
+    ),
+    (
+        "runtime.v1",
+        include_str!("../../../schemas/runtime.v1.bsol"),
+    ),
+    (
+        "runtime.v2",
+        include_str!("../../../schemas/runtime.v2.bsol"),
+    ),
     ("board.v1", include_str!("../../../schemas/board.v1.bsol")),
     ("board.v2", include_str!("../../../schemas/board.v2.bsol")),
     ("board.v3", include_str!("../../../schemas/board.v3.bsol")),
-    ("shell.pages.v1", include_str!("../../../schemas/shell.pages.v1.bsol")),
-    ("tools.config.v1", include_str!("../../../schemas/tools.config.v1.bsol")),
-    ("configuration.v1", include_str!("../../../schemas/configuration.v1.bsol")),
-    ("configuration.v2", include_str!("../../../schemas/configuration.v2.bsol")),
+    (
+        "shell.pages.v1",
+        include_str!("../../../schemas/shell.pages.v1.bsol"),
+    ),
+    (
+        "tools.config.v1",
+        include_str!("../../../schemas/tools.config.v1.bsol"),
+    ),
+    (
+        "configuration.v1",
+        include_str!("../../../schemas/configuration.v1.bsol"),
+    ),
+    (
+        "configuration.v2",
+        include_str!("../../../schemas/configuration.v2.bsol"),
+    ),
 ];
 
 /// Load an embedded schema profile by name (for example `project.v1`).
@@ -53,16 +82,19 @@ pub fn load_profile_from_document(document: &BsolDocument) -> Result<SchemaProfi
 
 /// Load a profile from a filesystem path.
 pub fn load_profile_from_path(path: &Path) -> Result<SchemaProfile, BsolError> {
-    let source = std::fs::read_to_string(path).map_err(|e| {
-        BsolError::Import(format!("failed to read `{}`: {e}", path.display()))
-    })?;
+    let source = std::fs::read_to_string(path)
+        .map_err(|e| BsolError::Import(format!("failed to read `{}`: {e}", path.display())))?;
     load_profile_from_source(&source)
 }
 
 pub fn parse_profile_document(document: &BsolDocument) -> Result<SchemaProfile, BsolError> {
-    let profile_block = document.blocks.iter().find(|b| b.kind == "profile").ok_or_else(|| {
-        BsolError::Schema("schema profile document must contain a `profile` block".into())
-    })?;
+    let profile_block = document
+        .blocks
+        .iter()
+        .find(|b| b.kind == "profile")
+        .ok_or_else(|| {
+            BsolError::Schema("schema profile document must contain a `profile` block".into())
+        })?;
     let name = profile_block
         .label
         .as_ref()
@@ -140,9 +172,8 @@ fn parse_import_schema(block: &BsolBlock) -> Result<ImportSchemaSpec, BsolError>
             )
         })?;
     let alias = assignment_string(block, "alias")?;
-    let from = assignment_string(block, "from")?.ok_or_else(|| {
-        BsolError::schema_at(block.span, "`import_schema` requires `from`")
-    })?;
+    let from = assignment_string(block, "from")?
+        .ok_or_else(|| BsolError::schema_at(block.span, "`import_schema` requires `from`"))?;
 
     let source = if from.starts_with("@pckg/") {
         ImportSource::PckgShorthand {
@@ -284,14 +315,14 @@ fn parse_block_rule(block: &BsolBlock, default_scope: RuleScope) -> Result<Block
 fn parse_field_rule(block: &BsolBlock) -> Result<FieldRule, BsolError> {
     let value_type = parse_value_type(block)?;
     let required = parse_bool(block, "required").unwrap_or(false);
-    let list_values = assignment_list(block, "list_values").ok().filter(|v| !v.is_empty());
+    let list_values = assignment_list(block, "list_values")
+        .ok()
+        .filter(|v| !v.is_empty());
     let allowed_attrs = assignment_list(block, "allowed_attrs").unwrap_or_default();
     let constraints = FieldConstraints {
         default_value: assignment_string(block, "default")?,
-        min: assignment_string(block, "min")?
-            .and_then(|v| v.parse().ok()),
-        max: assignment_string(block, "max")?
-            .and_then(|v| v.parse().ok()),
+        min: assignment_string(block, "min")?.and_then(|v| v.parse().ok()),
+        max: assignment_string(block, "max")?.and_then(|v| v.parse().ok()),
         pattern: assignment_string(block, "pattern")?,
         required_if: parse_if_map(block, "required_if")?,
         forbid_if: parse_if_map(block, "forbid_if")?,
@@ -331,9 +362,7 @@ fn parse_variant_rule(block: &BsolBlock) -> Result<VariantRule, BsolError> {
         .as_ref()
         .map(|q| q.value.clone())
         .or_else(|| assignment_string(block, "name").ok().flatten())
-        .ok_or_else(|| {
-            BsolError::schema_at(block.span, "`variant` block requires a name label")
-        })?;
+        .ok_or_else(|| BsolError::schema_at(block.span, "`variant` block requires a name label"))?;
     Ok(VariantRule {
         name,
         require: assignment_list(block, "require").unwrap_or_default(),
@@ -362,9 +391,7 @@ fn parse_extend_block(block: &BsolBlock) -> Result<ExtendSpec, BsolError> {
             .label
             .as_ref()
             .map(|q| q.value.clone())
-            .ok_or_else(|| {
-                BsolError::schema_at(rule_block.span, "extend rule requires label")
-            })?;
+            .ok_or_else(|| BsolError::schema_at(rule_block.span, "extend rule requires label"))?;
         rules.insert(rule_id, parse_block_rule(rule_block, RuleScope::TopLevel)?);
     }
     Ok(ExtendSpec {
@@ -375,9 +402,8 @@ fn parse_extend_block(block: &BsolBlock) -> Result<ExtendSpec, BsolError> {
 }
 
 fn parse_migration_block(block: &BsolBlock) -> Result<MigrationSpec, BsolError> {
-    let from = assignment_string(block, "from")?.ok_or_else(|| {
-        BsolError::schema_at(block.span, "`migration` requires `from` profile")
-    })?;
+    let from = assignment_string(block, "from")?
+        .ok_or_else(|| BsolError::schema_at(block.span, "`migration` requires `from` profile"))?;
     let mut detect = HashMap::new();
     let mut when_clauses = Vec::new();
     let mut rewrites = Vec::new();
@@ -671,9 +697,9 @@ fn value_as_string(value: &BsolValue) -> Result<String, BsolError> {
         BsolValue::Ident(i) => Ok(i.clone()),
         BsolValue::Bool(b) => Ok(b.to_string()),
         BsolValue::Ref(r) => Ok(r.display()),
-        BsolValue::BracketList(_) | BsolValue::InlineMap(_) => {
-            Err(BsolError::Schema("expected string, found structured value".into()))
-        }
+        BsolValue::BracketList(_) | BsolValue::InlineMap(_) => Err(BsolError::Schema(
+            "expected string, found structured value".into(),
+        )),
     }
 }
 

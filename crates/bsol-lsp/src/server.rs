@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use bsol::{BsolError, ValidatedDocument, analyze_with_profile, parse_bsol_document};
+use bsol::{analyze_with_profile, parse_bsol_document, BsolError, ValidatedDocument};
 use bsol_syntax::BsolError as ParseError;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;

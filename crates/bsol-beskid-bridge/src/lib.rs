@@ -4,8 +4,10 @@
 
 use std::path::Path;
 
-use bsol_analysis::{SchemaSource, parse_pckg_shorthand};
-use bsol_schema::{BsolError, ImportSchemaSpec, ImportSource, SchemaProfile, load_profile_from_path};
+use bsol_analysis::{parse_pckg_shorthand, SchemaSource};
+use bsol_schema::{
+    load_profile_from_path, BsolError, ImportSchemaSpec, ImportSource, SchemaProfile,
+};
 
 /// Resolves `@pckg/` shorthand and registry imports when a pre-materialized cache root is provided.
 #[derive(Debug, Clone)]
@@ -22,7 +24,11 @@ impl PckgSchemaSource {
 }
 
 impl SchemaSource for PckgSchemaSource {
-    fn resolve(&self, spec: &ImportSchemaSpec, _base_dir: &Path) -> Result<SchemaProfile, BsolError> {
+    fn resolve(
+        &self,
+        spec: &ImportSchemaSpec,
+        _base_dir: &Path,
+    ) -> Result<SchemaProfile, BsolError> {
         let (package, version, profile_path) = match &spec.from {
             ImportSource::PckgShorthand { reference } => parse_pckg_shorthand(reference)?,
             ImportSource::Registry {

@@ -71,7 +71,9 @@ pub struct ImportSchemaSpec {
 /// Where an imported schema profile is resolved from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportSource {
-    File { path: String },
+    File {
+        path: String,
+    },
     Git {
         url: String,
         rev: String,
@@ -83,7 +85,9 @@ pub enum ImportSource {
         path: String,
     },
     /// Shorthand `@pckg/package/path` form.
-    PckgShorthand { reference: String },
+    PckgShorthand {
+        reference: String,
+    },
 }
 
 /// Rule for matching and validating a block kind.
@@ -175,7 +179,10 @@ pub enum ValueType {
     Path,
     List,
     ListOf(Vec<ValueType>),
-    MapOf { key: Box<ValueType>, value: Box<ValueType> },
+    MapOf {
+        key: Box<ValueType>,
+        value: Box<ValueType>,
+    },
     RefTo(String),
     Inline(String),
     EnumOrQuoted(Vec<String>),
@@ -207,11 +214,7 @@ impl BlockRule {
         self.nested
             .values()
             .find(|rule| rule.matches_kind(kind))
-            .or_else(|| {
-                self.nested
-                    .get(kind)
-                    .filter(|rule| rule.matches_kind(kind))
-            })
+            .or_else(|| self.nested.get(kind).filter(|rule| rule.matches_kind(kind)))
     }
 }
 
