@@ -30,10 +30,10 @@ module.exports = grammar({
 
 		block_kind: ($) => $.identifier,
 
-		identifier: ($) => /[A-Za-z_][A-Za-z0-9_]*/,
+		identifier: (_$) => /[A-Za-z_][A-Za-z0-9_]*/,
 
-		string: ($) => /"[^"]*"/,
+		string: (_$) => /"[^"]*"/,
 
-		comment: ($) => token(choice(seq("//", /.*/), seq("#", /.*/))),
+		comment: (_$) => token(choice(seq("//", /.*/), seq("#", /.*/))),
 	},
 });
