@@ -1,6 +1,3 @@
-use bsol_schema::FieldConstraints;
-use bsol_syntax::BsolSpan;
-
 use crate::{BsolError, value::ValidatedValue};
 
 pub(super) fn apply_numeric_constraints(

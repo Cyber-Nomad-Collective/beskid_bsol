@@ -377,7 +377,7 @@ pub(super) fn read_quoted_string(source: &str, cursor: &mut usize) -> Option<Str
     None
 }
 
-fn is_schemaless_at(source: &str, cursor: usize) -> bool {
+pub(super) fn is_schemaless_at(source: &str, cursor: usize) -> bool {
     source[cursor..].starts_with("@schemaless")
         && !source[cursor + "@schemaless".len()..]
             .chars()

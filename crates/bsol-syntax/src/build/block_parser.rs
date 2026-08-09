@@ -6,8 +6,8 @@ use crate::parser::{BsolParser, Rule};
 use super::model::{BsolAttribute, BsolBlock, BsolDocument, BsolItem, BsolQuotedString};
 use super::pest_ast_builder::build_assignment;
 use super::scanner_primitives::{
-    find_assignment_end, find_matching_close_brace, read_attribute_list, read_ident,
-    read_quoted_string, read_schemaless_marker, skip_ws_and_comments,
+    find_assignment_end, find_matching_close_brace, is_schemaless_at, read_attribute_list,
+    read_ident, read_quoted_string, read_schemaless_marker, skip_ws_and_comments,
 };
 use super::spans_errors::{pest_error_with_offset, span_at};
 
