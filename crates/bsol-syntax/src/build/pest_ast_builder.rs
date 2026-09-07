@@ -1,5 +1,5 @@
-use pest::Parser;
 use pest::iterators::Pair;
+use pest::Parser;
 
 use crate::error::BsolError;
 use crate::parser::{BsolParser, Rule};

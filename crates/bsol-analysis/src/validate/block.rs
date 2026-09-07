@@ -4,7 +4,7 @@ use bsol_schema::{BlockRule, Cardinality, LabelRequirement, ValueType, VariantRu
 use bsol_syntax::{BsolAttribute, BsolBlock, BsolItem};
 
 use super::{field::validate_field_value, formatting::extra_field_value, model::ValidatedBlock};
-use crate::{BsolError, registry::ValidatorRegistry, value::ValidatedValue};
+use crate::{registry::ValidatorRegistry, value::ValidatedValue, BsolError};
 
 pub(super) fn validate_block(
     block: &BsolBlock,

@@ -1,4 +1,4 @@
-use crate::{BsolError, value::ValidatedValue};
+use crate::{value::ValidatedValue, BsolError};
 
 pub(super) fn apply_numeric_constraints(
     constraints: &bsol_schema::FieldConstraints,

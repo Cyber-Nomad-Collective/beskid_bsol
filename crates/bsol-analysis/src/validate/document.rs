@@ -4,7 +4,7 @@ use bsol_schema::{BlockRule, Cardinality, SchemaProfile};
 use bsol_syntax::BsolDocument;
 
 use super::{block::validate_block, model::ValidatedDocument};
-use crate::{BsolError, registry::ValidatorRegistry};
+use crate::{registry::ValidatorRegistry, BsolError};
 
 /// Validate `document` against `profile`.
 pub fn validate(

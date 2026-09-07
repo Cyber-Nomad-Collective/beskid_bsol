@@ -12,8 +12,8 @@ use super::{
     constraints::{apply_numeric_constraints, apply_string_constraints},
 };
 use crate::{
-    BsolError,
     value::{ValidatedBlockLite, ValidatedValue},
+    BsolError,
 };
 
 pub(super) fn validate_field_value(
