@@ -1,0 +1,132 @@
+==================
+Canonical language surface
+==================
+
+@deprecated(reason = "migration")
+profile "demo" {
+  version = 2
+  enabled = true
+  root = @node/main
+  schema_type = list[ref(node)|quoted]
+  field "items" { required_if = { kind = panel, } }
+  values = [default, "text", true, @node/main, { name = "inline", }, entry "child" { active = false },]
+  @note(level = 2) setting = map[string, ref(node)]
+  raw "body" @schemaless {
+    arbitrary = { nested: [1, 2] }
+  }
+}
+
+---
+
+(source_file
+  (block
+    (attribute_list
+      (attribute
+        (identifier)
+        (attribute_args
+          (attribute_arg
+            (identifier)
+            (value
+              (string))))))
+    (block_kind
+      (identifier))
+    (string)
+    (assignment
+      (identifier)
+      (value
+        (decimal_unsigned)))
+    (assignment
+      (identifier)
+      (value
+        (bool_literal)))
+    (assignment
+      (identifier)
+      (value
+        (ref_literal
+          (identifier)
+          (identifier))))
+    (assignment
+      (identifier)
+      (value
+        (type_expression
+          (bracket_type
+            (identifier)
+            (type_union
+              (type_atom
+                (generic_type
+                  (identifier)
+                  (identifier)))
+              (type_atom
+                (identifier)))))))
+    (block
+      (block_kind
+        (identifier))
+      (string)
+      (assignment
+        (identifier)
+        (value
+          (inline_map
+            (map_entry
+              (identifier)
+              (value
+                (identifier)))))))
+    (assignment
+      (identifier)
+      (value
+        (list
+          (list_content
+            (list_item)
+            (list_item
+              (string))
+            (list_item
+              (bool_literal))
+            (list_item
+              (ref_literal
+                (identifier)
+                (identifier)))
+            (list_item
+              (inline_map
+                (map_entry
+                  (identifier)
+                  (value
+                    (string)))))
+            (list_item
+              (inline_block
+                (block_kind
+                  (identifier))
+                (string)
+                (assignment
+                  (identifier)
+                  (value
+                    (bool_literal)))))))))
+    (assignment
+      (attribute_list
+        (attribute
+          (identifier)
+          (attribute_args
+            (attribute_arg
+              (identifier)
+              (value
+                (decimal_unsigned))))))
+      (identifier)
+      (value
+        (type_expression
+          (bracket_type
+            (identifier)
+            (type_union
+              (type_atom
+                (identifier)))
+            (type_atom
+              (generic_type
+                (identifier)
+                (identifier)))))))
+    (block
+      (block_kind
+        (identifier))
+      (string)
+      (schemaless)
+      (schemaless_body
+        (schemaless_text)
+        (schemaless_braced
+          (schemaless_body
+            (schemaless_text)))))))

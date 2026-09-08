@@ -18,5 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Align the editor Tree-sitter grammar and highlighting queries with the canonical BSOL surface,
+  including attributes, scalar values, references, inline containers, type expressions, trailing
+  commas, and balanced schemaless bodies; production schema fixtures now guard against drift.
 - Restore sibling visibility required by the split BSOL parser and remove stale extracted imports.
 - Resolve embedded schema profiles from their canonical repository paths after the loader split.

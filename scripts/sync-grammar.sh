@@ -2,13 +2,25 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GRAMMAR="$ROOT/grammars/tree-sitter-bsol"
-PEST="$ROOT/crates/bsol-syntax/src/bsol.pest"
-
-echo "BSOL grammar sync (pest manifest → tree-sitter keywords)"
-rg -o 'ident|quoted_string|bracket_list' "$PEST" | sort -u > "$GRAMMAR/generated-keywords.txt" || true
 
 if command -v tree-sitter >/dev/null 2>&1; then
-  (cd "$GRAMMAR" && tree-sitter generate && tree-sitter test)
+  tree_sitter_cli=(tree-sitter)
 else
-  echo "tree-sitter CLI not installed; skipped generate/test"
+  tree_sitter_cli=(npx --yes tree-sitter-cli@0.25.10)
 fi
+
+(
+  cd "$GRAMMAR"
+  "${tree_sitter_cli[@]}" generate
+  "${tree_sitter_cli[@]}" test
+  for source in "$ROOT"/schemas/*.bsol; do
+    output="$("${tree_sitter_cli[@]}" parse "$source" 2>&1)" || {
+      printf '%s\n' "$output" >&2
+      exit 1
+    }
+    if [[ "$output" == *ERROR* || "$output" == *MISSING* ]]; then
+      printf '%s\n' "$output" >&2
+      exit 1
+    fi
+  done
+)
