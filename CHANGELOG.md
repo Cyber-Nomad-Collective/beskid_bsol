@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Commit the generated Tree-sitter BSOL parser, node types, grammar JSON, and
   runtime headers required by editor consumers that load the grammar directly.
 
+### Changed
+
+- Replace the former MIT-or-Apache choice with a single Apache-2.0 license and
+  expose that SPDX declaration through every workspace crate.
+
 ### Fixed
 
 - Restore sibling visibility required by the split BSOL parser and remove stale extracted imports.

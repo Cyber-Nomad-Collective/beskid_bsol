@@ -2,6 +2,7 @@
 name = "bsol"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 description = "Beskid Structured Object Language — parser, schema profiles, and validation"
 readme = "../../README.md"
 keywords = ["bsol", "beskid", "schema", "config"]

@@ -2,6 +2,7 @@
 name = "bsol-syntax"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 description = "BSOL parser and generic block AST"
 readme = "../../README.md"
 keywords = ["bsol", "parser", "config"]
