@@ -1,0 +1,34 @@
+{
+  "grammars": [
+    {
+      "name": "bsol",
+      "camelcase": "Bsol",
+      "scope": "source.bsol",
+      "path": ".",
+      "file-types": ["bsol"],
+      "highlights": "queries/highlights.scm",
+      "injection-regex": "bsol"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Tree-sitter grammar for Beskid Structured Object Language",
+    "authors": [
+      {
+        "name": "Cyber Nomad Collective"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/Cyber-Nomad-Collective/beskid_bsol"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "node": true,
+    "rust": false,
+    "go": false,
+    "python": false,
+    "swift": false
+  }
+}

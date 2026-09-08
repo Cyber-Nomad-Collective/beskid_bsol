@@ -1,16 +1,13 @@
-(block
-  kind: (identifier)
-  label: (string)?
-  body: (block_body))
+(block (block_kind) @keyword)
 
-(block_body
-  "{" (_block_item)* "}")
+(block (string) @string)
 
-(assignment
-  key: (identifier)
-  "="
-  value: (value))
+(assignment (identifier) @property)
 
 (string) @string
-(identifier) @property
+(identifier) @variable
 (comment) @comment
+
+["{" "}" "[" "]"] @punctuation.bracket
+["=" ","] @operator
+"@schemaless" @attribute

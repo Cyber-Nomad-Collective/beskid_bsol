@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Commit the generated Tree-sitter BSOL parser, node types, grammar JSON, and
+  runtime headers required by editor consumers that load the grammar directly.
+
 ### Fixed
 
 - Restore sibling visibility required by the split BSOL parser and remove stale extracted imports.

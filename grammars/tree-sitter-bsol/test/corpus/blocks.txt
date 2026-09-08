@@ -10,8 +10,9 @@ demo {
 
 (source_file
   (block
-    kind: (identifier)
-    body: (block_body
-      (assignment
-        key: (identifier)
-        value: (string))))))
+    (block_kind
+      (identifier))
+    (assignment
+      (identifier)
+      (value
+        (string)))))
