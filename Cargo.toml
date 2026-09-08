@@ -13,7 +13,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 repository = "https://github.com/Cyber-Nomad-Collective/beskid_bsol"
 authors = ["Cyber Nomad Collective"]
 

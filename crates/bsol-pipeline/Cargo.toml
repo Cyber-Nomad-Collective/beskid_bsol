@@ -2,6 +2,7 @@
 name = "bsol-pipeline"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 description = "BSOL analysis pipeline phases and session"
 readme = "../../README.md"
 keywords = ["bsol", "pipeline"]

@@ -2,6 +2,11 @@
 
 Block-based configuration language used for Beskid manifests (`.bproj`, `.bws`), runtime manifests, and shell layouts.
 
+## Licensing
+
+BSOL and its Beskid-owned crates are Apache-2.0. See
+[LICENSING.md](LICENSING.md) for scope and redistribution guidance.
+
 ## Crates
 
 | Crate | Role |
