@@ -84,6 +84,7 @@ pub(crate) fn raw_to_string(value: &bsol_syntax::BsolValue) -> Option<String> {
     match value {
         bsol_syntax::BsolValue::QuotedString(q) => Some(q.value.clone()),
         bsol_syntax::BsolValue::Ident(i) => Some(i.clone()),
+        bsol_syntax::BsolValue::Number(n) => Some(n.raw.clone()),
         bsol_syntax::BsolValue::Bool(b) => Some(b.to_string()),
         bsol_syntax::BsolValue::Ref(r) => Some(r.display()),
         _ => None,

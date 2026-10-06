@@ -1,0 +1,1 @@
+manifest { abi_version = 5 } kernel { symbol = example name = example returns = unit params = [i64] }

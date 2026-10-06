@@ -1,0 +1,8 @@
+@Root(flag = true) config {
+  @Secret title = "typed"
+  items = ["one", 4294967295]
+  scores = { alpha = 1, beta = 2 }
+  embedded = item "inner" { name = "nested" }
+  target = @item/one
+}
+item "one" { name = "target" }

@@ -12,6 +12,15 @@ bsol-analysis = { workspace = true }
 bsol-schema = { workspace = true }
 bsol-syntax = { workspace = true }
 thiserror = { workspace = true }
+cap-std = "4"
+sha2 = "0.10"
+semver = "1"
+url = "2"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"
+serde_json = "1"
 
 [lints]
 workspace = true

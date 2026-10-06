@@ -4,7 +4,7 @@ BSOL v2 extends the block model with richer types, composition, and migration.
 
 ## Syntax additions
 
-- **Attributes:** `[Deprecated(since = "2.0")]` before blocks
+- **Attributes:** `@Deprecated(since = "2.0")` before blocks
 - **References:** `@node/main_panel` cross-block links
 - **Inline maps:** `env = { DEBUG = "1", PORT = 8080 }`
 - **Typed lists:** `[a, @node/x, node { kind = panel }]`

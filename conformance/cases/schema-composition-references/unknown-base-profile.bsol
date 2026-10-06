@@ -1,0 +1,4 @@
+profile "composition.v2" { version = 2
+  rule "leaf" { scope = top match = keyword keyword = leaf label = optional cardinality = many extends = absent
+  }
+}

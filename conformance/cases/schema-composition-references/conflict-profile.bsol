@@ -1,0 +1,8 @@
+profile "composition.v2" { version = 2
+  rule "base" { scope = top match = keyword keyword = base label = optional cardinality = many 
+    field "name" { type = quoted required = true }
+  }
+  rule "leaf" { scope = top match = keyword keyword = leaf label = optional cardinality = many extends = base
+    field "name" { type = u32 required = true }
+  }
+}

@@ -1,0 +1,1 @@
+profile "example" { version = 2 rule "entry" { match = keyword keyword = entry cardinality = one } }

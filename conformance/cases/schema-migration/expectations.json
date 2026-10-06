@@ -1,0 +1,72 @@
+{
+  "representation": "structural-migration.v1",
+  "cases": [
+    {
+      "profile": "profile",
+      "document": "selected",
+      "result": "ok",
+      "required": {
+        "name": "new",
+        "version": 2
+      },
+      "preserve": {
+        "other.text": "old_name = old"
+      }
+    },
+    {
+      "profile": "profile",
+      "document": "collision",
+      "error": "MigrationDestinationCollision",
+      "related": true
+    },
+    {
+      "profile": "ambiguous-profile",
+      "document": "selected",
+      "error": "AmbiguousMigrationRoute",
+      "related": true
+    },
+    {
+      "profile": "cycle-profile",
+      "document": "selected",
+      "error": "MigrationCycle"
+    },
+    {
+      "profile": "profile",
+      "document": "no-route",
+      "error": "NoMigrationRoute"
+    },
+    {
+      "profile": "profile",
+      "document": "already",
+      "error": "AlreadyAtTarget"
+    }
+  ],
+  "chains": [
+    {
+      "from": "config.v1",
+      "to": "config.v3",
+      "profiles": [
+        "profile",
+        "chain-target"
+      ],
+      "document": "selected",
+      "result": "ok",
+      "required": {
+        "name": "new",
+        "version": 3
+      }
+    },
+    {
+      "from": "config.v1",
+      "to": "config.v3",
+      "profiles": [
+        "profile",
+        "chain-target",
+        "chain-cycle"
+      ],
+      "document": "selected",
+      "error": "MigrationCycle",
+      "related": true
+    }
+  ]
+}

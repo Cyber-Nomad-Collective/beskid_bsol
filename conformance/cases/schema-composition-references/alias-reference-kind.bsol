@@ -1,0 +1,2 @@
+config { target = @node/one }
+node "one" {}

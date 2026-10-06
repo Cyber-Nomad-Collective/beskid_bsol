@@ -1,0 +1,3 @@
+config { many = [@item/one,@item/absent] named = { first = @item/one } inside = holder { target = @item/two } }
+item "one" {}
+item "two" {}

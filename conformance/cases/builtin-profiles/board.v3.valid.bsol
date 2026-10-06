@@ -1,0 +1,1 @@
+board "example" { root = @node/main } node "main" { kind = panel widget = "example" }

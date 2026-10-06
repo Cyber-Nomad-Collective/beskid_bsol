@@ -1,0 +1,12 @@
+profile "composition.v2" { version = 2
+  rule "base" { scope = top match = keyword keyword = base label = optional cardinality = many 
+    field "name" { type = quoted required = true }
+  }
+  rule "left" { scope = top match = keyword keyword = left label = optional cardinality = many extends = base
+  }
+  rule "right" { scope = top match = keyword keyword = right label = optional cardinality = many extends = base
+  }
+  rule "leaf" { scope = top match = keyword keyword = leaf label = optional cardinality = many mixes = [left,right]
+    field "count" { type = u32 required = true }
+  }
+}

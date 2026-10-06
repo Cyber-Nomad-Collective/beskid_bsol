@@ -1,0 +1,1 @@
+board "example" { title = "Example" } tile "main" { widget = "example" region = main }

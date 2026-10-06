@@ -1,0 +1,18 @@
+profile "constraints.v2" {
+  version = 2
+  rule "config" {
+    scope = top
+    match = keyword
+    keyword = config
+    label = forbidden
+    cardinality = one
+    field "source" { type = ident required = true }
+    field "name" { type = quoted required = false default = "default-name" }
+    field "count" { type = u32 required = true default = 3 min = 1 max = 5 }
+    field "path" { type = quoted required = false }
+    field "url" { type = quoted required = false required_if = { source = git } forbid_if = { source = path } }
+    field "rev" { type = quoted required = false default = "head" }
+    variant "path" { require = [path] forbid = [url] }
+    variant "git" { require = [url, rev] forbid = [path] }
+  }
+}

@@ -1,0 +1,100 @@
+[
+  {
+    "profile": "schema.v1",
+    "profileSha256": "d5daf46356a32bd4b5062eaab2a1847b0cd63077599049645f22403adabf91f3",
+    "validSha256": "431881dcb47f8985b3347002d1c63f56f5b530e2caab6d4a1815dba99f235cdc",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "schema.v2",
+    "profileSha256": "f153c00cb20fd4e7b6ec3e4dd3a8067d760078d9e72fbeec90c8c089bfb887fd",
+    "validSha256": "a58d7a032a30573ed33113ad68563ea90ff0d2308e58153b9429cdbc7c3a499b",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "project.v1",
+    "profileSha256": "578e29ab0ef0c118d139828ec818399a547dd6e8bc5e8c5565b22cfe011f5286",
+    "validSha256": "f079438e802413eb990a947a52b8299d3dc6b7460148aa796cc574c40202d093",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "project.v2",
+    "profileSha256": "b4f38646f7e59832f8650267a0803a417e802840bd0b7188a714ae25a0ce2d7f",
+    "validSha256": "f35d0d791671ab79bcb666826951e12713418255579fb4b09ed86f47528ca942",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "workspace.v1",
+    "profileSha256": "2bdc0ad3f34d413eabf9448e734f4f2adefcc3a1e08f541a5c495753d4245991",
+    "validSha256": "d52ef657a82e4ed4b8ebd38ca3055eb7e3a97d17f3b4affea32c08ef1e23c40a",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "runtime.v1",
+    "profileSha256": "24a8e0e13b476d9e2657e0e3df1902d84230ba03b06b8997cfb30bffb080f536",
+    "validSha256": "b06f989efb2e6878941d7cf2eaf12bfec09de835eaf33827754328c82499ad8c",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "runtime.v2",
+    "profileSha256": "7a14852dbb5cc79e3dfc08a1cdb29baeb3427fbd93b1adcf8720697c5c2abd1c",
+    "validSha256": "9dc5e57934d6eb3d9e8327aaa44e9f478637327b92272f18fb296e96e33177bb",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "board.v1",
+    "profileSha256": "9144864be76a508acd6d0334f85b7e4afc22d1a8f4334fe40e1205ebe84340ba",
+    "validSha256": "26514e4604f0d52a281f8ff1ae3245036a3f14169edb97d67c4c0610b60c3b6c",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "board.v2",
+    "profileSha256": "ff1e3294c694c5b780f6bdfefd6a16213f5f27cc26f336cf4424a34c6c2d0c34",
+    "validSha256": "c4c6e7600d01652ced49b1b8d0e8cd1b1af8daa87697d67fcf83d1ad3c357aa4",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "board.v3",
+    "profileSha256": "b6918edb8e521984ed278cdc7077322b0bc5388429e3a976bcef2bf463a1d38a",
+    "validSha256": "284181d069600d8c12a4820086ef36b897bb5f72faf5a65f16daebf9bba06a76",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "shell.pages.v1",
+    "profileSha256": "05d19eef1940a2adaa2142aa454ca0ca2d318509af283ff76ad4b20d256639e1",
+    "validSha256": "4c6f553ae6ffa411647af01d6cf4e29fd9457a0df17daf23995020fa0a21ae36",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "tools.config.v1",
+    "profileSha256": "7c85633821a1e816bb76a6f5c951f7928f9618117fd9c539dc8c89683ee57d96",
+    "validSha256": "9855a8a95a61f38f051c21309b24448038baa38fcbd91965cd02ed719481a21f",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "configuration.v1",
+    "profileSha256": "9c7c0c5c415f6ead1628f00deb1b7a1db850b560233ad88c13680dc4b5739b6a",
+    "validSha256": "d480f7994bae3dd71a8e983a65ea7d77a28a0f6a46ec27502ffb4b9ec162b060",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  },
+  {
+    "profile": "configuration.v2",
+    "profileSha256": "41ea0a408edf90cb8ca2de393bb4dd39d85540f0bd8f47bfed29196048bdcfd2",
+    "validSha256": "2ce44e8a4a1935b57109d80a1ccfd8bc02cfeaeaf5a2abf54df0c86376057c53",
+    "invalidSha256": "98216076401839fdc77fc3e11a8bd6a7b53b630599a030e8c110622df41242c9",
+    "invalidCategory": "Cardinality"
+  }
+]

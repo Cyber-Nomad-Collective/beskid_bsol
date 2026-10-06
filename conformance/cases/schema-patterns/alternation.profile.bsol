@@ -1,0 +1,1 @@
+profile "patterns.v2" { version = 2 rule "config" { match = keyword keyword = config label = forbidden cardinality = one field "value" { type = quoted required = true pattern = "^(cat|dog)$" } } }

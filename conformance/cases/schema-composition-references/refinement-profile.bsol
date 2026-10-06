@@ -1,0 +1,4 @@
+profile "composition.v2" { version = 2
+ rule "base" { match = keyword keyword = base label = optional cardinality = many field "count" { type = u32 min = 1 max = 10 } }
+ rule "leaf" { match = keyword keyword = leaf label = optional cardinality = many extends = base field "count" { type = u32 min = 2 max = 8 } }
+}

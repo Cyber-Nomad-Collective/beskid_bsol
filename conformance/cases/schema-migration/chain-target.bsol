@@ -1,0 +1,17 @@
+profile "config.v3" {
+  version = 2
+  rule "config" {
+    scope = top match = keyword keyword = config label = forbidden cardinality = one extras = false
+    field "name" { type = quoted required = true }
+    field "version" { type = u32 required = true }
+  }
+  rule "other" {
+    scope = top match = keyword keyword = other label = forbidden cardinality = many extras = false
+    field "text" { type = quoted required = true }
+  }
+  migration "second" {
+    from = "config.v2"
+    when { block = config field = version field_value = 2 }
+    rewrite { replace_value { from = 2 to = 3 } }
+  }
+}

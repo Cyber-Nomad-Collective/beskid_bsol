@@ -1,0 +1,1 @@
+config { version = 2 } option { key = "color" value = auto }

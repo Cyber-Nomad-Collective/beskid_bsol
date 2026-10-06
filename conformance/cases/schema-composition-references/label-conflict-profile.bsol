@@ -1,0 +1,4 @@
+profile "composition.v2" { version = 2
+ rule "base" { match = keyword keyword = base label = required cardinality = many }
+ rule "leaf" { match = keyword keyword = leaf label = forbidden cardinality = many extends = base }
+}

@@ -1,0 +1,94 @@
+{
+  "acceptance": "BSOL-06-04",
+  "profile": "constraints.v2",
+  "cases": [
+    {
+      "id": "defaults",
+      "valid": true,
+      "typedDefaults": {
+        "count": {
+          "kind": "Number",
+          "raw": "3"
+        },
+        "name": {
+          "kind": "String",
+          "text": "default-name"
+        },
+        "rev": {
+          "kind": "String",
+          "text": "head"
+        }
+      },
+      "inputSha256": "b2bc844da99afb3427b82b345553abd05df977f2179dbe85732075af2f040ad9"
+    },
+    {
+      "id": "override",
+      "valid": true,
+      "supplied": {
+        "count": {
+          "kind": "Number",
+          "raw": "5"
+        },
+        "name": {
+          "kind": "String",
+          "text": "explicit"
+        },
+        "rev": {
+          "kind": "String",
+          "text": "exact"
+        }
+      },
+      "inputSha256": "b7dc9ea3c24f1c89f86822509274824850e95c9a71a31e5c0a28c2f1a951ff29"
+    },
+    {
+      "id": "below-min",
+      "valid": false,
+      "code": "BelowMinimum",
+      "field": "count",
+      "inputSha256": "becda968950d9a631e15c18bdef83f0d636aec0cbe971344e70b927c59e8f6ff"
+    },
+    {
+      "id": "above-max",
+      "valid": false,
+      "code": "AboveMaximum",
+      "field": "count",
+      "inputSha256": "02b4c0e5dae3e10793d5bc3025ae677935b69fb975dc14fee9a3dd1604096231"
+    },
+    {
+      "id": "required-if",
+      "valid": false,
+      "code": "RequiredIf",
+      "field": "url",
+      "inputSha256": "0bec19e19d1cdbc7ace6fcaba60456795cf065f85beb68abd52a015cb0ca232b"
+    },
+    {
+      "id": "forbid-if",
+      "valid": false,
+      "code": "ForbiddenIf",
+      "field": "url",
+      "inputSha256": "5d26c3418662896c249899c731b40ded082f0df74ac0ba5afeecff52685b7704"
+    },
+    {
+      "id": "variant-missing",
+      "valid": false,
+      "code": "VariantRequiredField",
+      "field": "path",
+      "inputSha256": "a68776737d16292289aff0407099acb7cdd491eddabf23917a8da850ff41d51b"
+    },
+    {
+      "id": "variant-unknown",
+      "valid": false,
+      "code": "UnknownVariant",
+      "field": "source",
+      "inputSha256": "c395ac857af59182040615a0baa587d6c49211c00c0b74df049b1cd467c538ce"
+    },
+    {
+      "id": "invalid-default",
+      "validProfile": false,
+      "code": "InvalidDefault",
+      "field": "name",
+      "inputSha256": "1f7a0a3f32a5615697e651de50886e73a613ce7b307d2e08e9576b035675fbf2"
+    }
+  ],
+  "profileSha256": "a9b9db7f3652642ad6a07d185dade879292b9d20bc8dc30c1856d43fecce29f4"
+}

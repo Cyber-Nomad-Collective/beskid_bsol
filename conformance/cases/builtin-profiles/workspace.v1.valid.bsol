@@ -1,0 +1,1 @@
+workspace { name = "example" resolver = v1 } member "app" { path = "app" }

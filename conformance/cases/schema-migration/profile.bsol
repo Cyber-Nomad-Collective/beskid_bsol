@@ -1,0 +1,21 @@
+profile "config.v2" {
+  version = 2
+  rule "config" {
+    scope = top match = keyword keyword = config label = forbidden cardinality = one extras = false
+    field "name" { type = quoted required = true }
+    field "version" { type = u32 required = true }
+  }
+  rule "other" {
+    scope = top match = keyword keyword = other label = forbidden cardinality = many extras = false
+    field "text" { type = quoted required = true }
+  }
+  migration "old" {
+    from = "config.v1"
+    when { block = config field = old_name }
+    rewrite {
+      rename_field = { old_name = name }
+      add_field = { version = 2 }
+      replace_value { from = "old" to = "new" }
+    }
+  }
+}

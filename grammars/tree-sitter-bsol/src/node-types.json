@@ -220,7 +220,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "map_entry",
@@ -281,6 +281,10 @@
         },
         {
           "type": "inline_map",
+          "named": true
+        },
+        {
+          "type": "number",
           "named": true
         },
         {
@@ -448,11 +452,11 @@
           "named": true
         },
         {
-          "type": "decimal_unsigned",
+          "type": "identifier",
           "named": true
         },
         {
-          "type": "identifier",
+          "type": "inline_block",
           "named": true
         },
         {
@@ -461,6 +465,10 @@
         },
         {
           "type": "list",
+          "named": true
+        },
+        {
+          "type": "number",
           "named": true
         },
         {
@@ -516,10 +524,6 @@
     "extra": true
   },
   {
-    "type": "decimal_unsigned",
-    "named": true
-  },
-  {
     "type": "default",
     "named": false
   },
@@ -529,6 +533,10 @@
   },
   {
     "type": "identifier",
+    "named": true
+  },
+  {
+    "type": "number",
     "named": true
   },
   {

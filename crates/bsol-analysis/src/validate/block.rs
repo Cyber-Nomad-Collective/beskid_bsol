@@ -1,15 +1,29 @@
 use std::collections::{HashMap, HashSet};
 
-use bsol_schema::{BlockRule, Cardinality, LabelRequirement, ValueType, VariantRule};
+use bsol_schema::{BlockRule, Cardinality, LabelRequirement, VariantRule};
 use bsol_syntax::{BsolAttribute, BsolBlock, BsolItem};
 
-use super::{field::validate_field_value, formatting::extra_field_value, model::ValidatedBlock};
-use crate::{registry::ValidatorRegistry, value::ValidatedValue, BsolError};
+use super::{
+    context::ValidationContext, field::validate_field_value, formatting::extra_field_value,
+    model::ValidatedBlock,
+};
+use crate::{value::ValidatedValue, BsolError};
 
 pub(super) fn validate_block(
     block: &BsolBlock,
     rule: &BlockRule,
-    registry: &ValidatorRegistry,
+    context: &mut ValidationContext<'_>,
+) -> Result<ValidatedBlock, BsolError> {
+    context.enter(block.span)?;
+    let result = validate_block_body(block, rule, context);
+    context.leave();
+    result
+}
+
+fn validate_block_body(
+    block: &BsolBlock,
+    rule: &BlockRule,
+    context: &mut ValidationContext<'_>,
 ) -> Result<ValidatedBlock, BsolError> {
     validate_block_attrs(&block.attrs, &rule.allowed_attrs, block.span)?;
 
@@ -66,7 +80,7 @@ pub(super) fn validate_block(
     for item in &block.items {
         match item {
             BsolItem::Assignment(assignment) => {
-                validate_block_attrs(&assignment.attrs, &[], assignment.span)?;
+                context.charge(assignment.span)?;
                 let key = assignment.key.clone();
                 if !seen_keys.insert(key.clone()) {
                     return Err(BsolError::schema_at(
@@ -75,7 +89,12 @@ pub(super) fn validate_block(
                     ));
                 }
                 if let Some(field_rule) = rule.fields.get(&key) {
-                    let validated = validate_field_value(assignment, field_rule)?;
+                    validate_block_attrs(
+                        &assignment.attrs,
+                        &field_rule.allowed_attrs,
+                        assignment.span,
+                    )?;
+                    let validated = validate_field_value(assignment, field_rule, rule, context)?;
                     field_spans.insert(key.clone(), assignment.span);
                     if let Some(list) = validated.as_list_strings() {
                         lists.insert(key.clone(), list);
@@ -85,6 +104,7 @@ pub(super) fn validate_block(
                     }
                     values.insert(key, validated);
                 } else if rule.allow_extra_fields {
+                    validate_block_attrs(&assignment.attrs, &[], assignment.span)?;
                     let value = extra_field_value(assignment)?;
                     extras.insert(key, value);
                 } else {
@@ -96,7 +116,7 @@ pub(super) fn validate_block(
             }
             BsolItem::Block(nested_block) => {
                 if let Some(nested_rule) = rule.nested_rule_for_kind(&nested_block.kind) {
-                    let validated = validate_block(nested_block, nested_rule, registry)?;
+                    let validated = validate_block(nested_block, nested_rule, context)?;
                     *nested_counts.entry(nested_rule.id.clone()).or_default() += 1;
                     nested.push(validated);
                 } else if rule.allow_extra_nested {
@@ -134,8 +154,8 @@ pub(super) fn validate_block(
         }
     }
 
-    apply_defaults(rule, &mut fields, &mut values, &mut lists);
-    validate_conditional_fields(rule, &fields, block.span)?;
+    apply_defaults(rule, &mut fields, &mut values, &mut lists, context)?;
+    validate_conditional_fields(rule, &fields, &values, block.span)?;
     validate_variants(rule, &fields, block.span)?;
 
     for (field_name, field_rule) in &rule.fields {
@@ -194,7 +214,7 @@ pub(super) fn validate_block(
         raw_body: None,
     };
 
-    registry.run(&validated)?;
+    context.registry.run(&validated)?;
     Ok(validated)
 }
 
@@ -224,9 +244,6 @@ fn validate_block_attrs(
     allowed: &[String],
     span: bsol_syntax::BsolSpan,
 ) -> Result<(), BsolError> {
-    if allowed.is_empty() {
-        return Ok(());
-    }
     for attr in attrs {
         if !allowed.iter().any(|a| a == &attr.name) {
             return Err(BsolError::schema_at(
@@ -244,35 +261,35 @@ fn apply_defaults(
     fields: &mut HashMap<String, String>,
     values: &mut HashMap<String, ValidatedValue>,
     lists: &mut HashMap<String, Vec<String>>,
-) {
+    context: &mut ValidationContext<'_>,
+) -> Result<(), BsolError> {
     for (name, field_rule) in &rule.fields {
         if values.contains_key(name) {
             continue;
         }
         if let Some(default) = &field_rule.constraints.default_value {
-            fields.insert(name.clone(), default.clone());
-            values.insert(name.clone(), ValidatedValue::String(default.clone()));
-            if matches!(
-                field_rule.value_type,
-                ValueType::List | ValueType::ListOf(_)
-            ) {
-                lists.insert(
-                    name.clone(),
-                    default.split(',').map(|s| s.trim().to_string()).collect(),
-                );
+            let validated = validate_field_value(default, field_rule, rule, context)?;
+            if let Some(text) = validated.as_string() {
+                fields.insert(name.clone(), text);
             }
+            if let Some(list) = validated.as_list_strings() {
+                lists.insert(name.clone(), list);
+            }
+            values.insert(name.clone(), validated);
         }
     }
+    Ok(())
 }
 
 fn validate_conditional_fields(
     rule: &BlockRule,
     fields: &HashMap<String, String>,
+    values: &HashMap<String, ValidatedValue>,
     span: bsol_syntax::BsolSpan,
 ) -> Result<(), BsolError> {
     for (name, field_rule) in &rule.fields {
         for (key, expected) in &field_rule.constraints.required_if {
-            if fields.get(key).is_some_and(|v| v == expected) && !fields.contains_key(name) {
+            if fields.get(key).is_some_and(|v| v == expected) && !values.contains_key(name) {
                 return Err(BsolError::schema_at(
                     span,
                     format!("field `{name}` required when `{key}` = `{expected}`"),
@@ -280,7 +297,7 @@ fn validate_conditional_fields(
             }
         }
         for (key, expected) in &field_rule.constraints.forbid_if {
-            if fields.get(key).is_some_and(|v| v == expected) && fields.contains_key(name) {
+            if fields.get(key).is_some_and(|v| v == expected) && values.contains_key(name) {
                 return Err(BsolError::schema_at(
                     span,
                     format!("field `{name}` forbidden when `{key}` = `{expected}`"),

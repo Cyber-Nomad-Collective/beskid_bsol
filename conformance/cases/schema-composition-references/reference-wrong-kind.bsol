@@ -1,0 +1,3 @@
+config { target = @other/one }
+item "one" {}
+other "one" {}

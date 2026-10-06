@@ -1,10 +1,10 @@
+use super::parse_source::ParseSource;
 use crate::error::BsolError;
 
-use super::model::{BsolAttribute, BsolAttributeArg, BsolRef};
-use super::pest_ast_builder::parse_value_text;
+use super::model::BsolAttribute;
 use super::spans_errors::span_at;
 
-fn skip_horizontal_ws(source: &str, cursor: &mut usize) {
+fn skip_horizontal_ws(source: &ParseSource<'_>, cursor: &mut usize) {
     while *cursor < source.len() {
         match source.as_bytes().get(*cursor) {
             Some(b' ' | b'\t') => *cursor += 1,
@@ -14,7 +14,7 @@ fn skip_horizontal_ws(source: &str, cursor: &mut usize) {
 }
 
 pub(super) fn find_assignment_end(
-    source: &str,
+    source: &ParseSource<'_>,
     start: usize,
     end: usize,
 ) -> Result<usize, BsolError> {
@@ -46,303 +46,36 @@ pub(super) fn find_assignment_end(
     Ok(cursor.min(end))
 }
 
-fn scan_value_end(source: &str, start: usize, end: usize) -> Result<usize, BsolError> {
-    let mut cursor = start;
-    if source.as_bytes().get(cursor) == Some(&b'"') {
-        if read_quoted_string(source, &mut cursor).is_none() {
-            return Err(BsolError::parse_at(
-                span_at(source, start, end),
-                "unclosed string in assignment",
-            ));
-        }
-    } else if source.as_bytes().get(cursor) == Some(&b'[') {
-        let bracket_end = find_matching_close_bracket(source, cursor).ok_or_else(|| {
-            BsolError::parse_at(span_at(source, start, end), "unclosed bracket list")
-        })?;
-        cursor = bracket_end;
-    } else if source.as_bytes().get(cursor) == Some(&b'{') {
-        let brace_end = find_matching_close_brace(source, cursor).ok_or_else(|| {
-            BsolError::parse_at(span_at(source, start, end), "unclosed inline map")
-        })?;
-        cursor = brace_end;
-    } else if source.as_bytes().get(cursor) == Some(&b'@') {
-        read_ref_literal(source, &mut cursor).ok_or_else(|| {
-            BsolError::parse_at(span_at(source, start, end), "invalid reference literal")
-        })?;
-    } else if read_bool_literal(source, &mut cursor).is_some() {
-        // consumed
-    } else if read_type_expr(source, &mut cursor).is_some() {
-        // consumed parameterized type expression (ref(node), list[...], map[...])
-    } else if read_bare_token(source, &mut cursor).is_none() {
-        return Err(BsolError::parse_at(
-            span_at(source, start, end),
-            "missing assignment value",
-        ));
-    }
-    Ok(cursor)
-}
-
-fn read_type_expr(source: &str, cursor: &mut usize) -> Option<()> {
-    let start = *cursor;
-    read_ident(source, cursor)?;
-    skip_horizontal_ws(source, cursor);
-    if source.as_bytes().get(*cursor) == Some(&b'(') {
-        if find_matching_close_paren(source, *cursor).is_none() {
-            *cursor = start;
-            return None;
-        }
-        *cursor = find_matching_close_paren(source, *cursor).unwrap();
-        return Some(());
-    }
-    if source.as_bytes().get(*cursor) == Some(&b'[') {
-        if find_matching_close_bracket(source, *cursor).is_none() {
-            *cursor = start;
-            return None;
-        }
-        *cursor = find_matching_close_bracket(source, *cursor).unwrap();
-        return Some(());
-    }
-    *cursor = start;
-    None
-}
-
-fn find_matching_close_paren(source: &str, open: usize) -> Option<usize> {
-    debug_assert_eq!(source.as_bytes().get(open), Some(&b'('));
-    let mut depth = 0i32;
-    let mut i = open;
-    let mut in_string = false;
-    while i < source.len() {
-        let b = source.as_bytes()[i];
-        match b {
-            b'"' => in_string = !in_string,
-            b'(' if !in_string => depth += 1,
-            b')' if !in_string => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(i + 1);
-                }
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    None
-}
-
-fn read_bare_token(source: &str, cursor: &mut usize) -> Option<()> {
-    let start = *cursor;
-    let first = source[*cursor..].chars().next()?;
-    if first.is_ascii_digit() {
-        while let Some(ch) = source[*cursor..].chars().next() {
-            if !ch.is_ascii_digit() {
-                break;
-            }
-            *cursor += ch.len_utf8();
-        }
-    } else if first.is_ascii_alphabetic() || first == '_' {
-        read_ident(source, cursor)?;
-    } else {
-        return None;
-    }
-    (*cursor > start).then_some(())
-}
-
-fn read_bool_literal(source: &str, cursor: &mut usize) -> Option<bool> {
-    for (text, value) in [("true", true), ("false", false)] {
-        if source[*cursor..].starts_with(text) {
-            let next = *cursor + text.len();
-            let continues = source[next..]
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_');
-            if !continues {
-                *cursor = next;
-                return Some(value);
-            }
-        }
-    }
-    None
-}
-
-fn read_ref_literal(source: &str, cursor: &mut usize) -> Option<BsolRef> {
-    if source.as_bytes().get(*cursor) != Some(&b'@') {
-        return None;
-    }
-    let start = *cursor;
-    *cursor += 1;
-    if is_schemaless_at(source, start) {
-        *cursor = start;
-        return None;
-    }
-    let rule_kind = read_ident(source, cursor);
-    skip_horizontal_ws(source, cursor);
-    if source.as_bytes().get(*cursor) == Some(&b'/') {
-        *cursor += 1;
-        skip_horizontal_ws(source, cursor);
-        let label = read_ident(source, cursor)?;
-        return Some(BsolRef {
-            span: span_at(source, start, *cursor),
-            rule_kind,
-            label,
-        });
-    }
-    if let Some(label) = rule_kind {
-        return Some(BsolRef {
-            span: span_at(source, start, *cursor),
-            rule_kind: None,
-            label,
-        });
-    }
-    *cursor = start;
-    None
-}
-
-fn find_matching_close_bracket(source: &str, open: usize) -> Option<usize> {
-    debug_assert_eq!(source.as_bytes().get(open), Some(&b'['));
-    let mut depth = 0i32;
-    let mut i = open;
-    let mut in_string = false;
-    while i < source.len() {
-        let b = source.as_bytes()[i];
-        match b {
-            b'"' => in_string = !in_string,
-            b'[' if !in_string => depth += 1,
-            b']' if !in_string => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(i + 1);
-                }
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    None
+fn scan_value_end(source: &ParseSource<'_>, start: usize, end: usize) -> Result<usize, BsolError> {
+    use pest::Parser;
+    let mut pairs = crate::BsolParser::parse(crate::Rule::value, &source[start..end])
+        .map_err(|error| super::spans_errors::pest_error_with_offset(source, start, error))?;
+    let pair = pairs
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span_at(source, start, end), "missing value"))?;
+    Ok(start + pair.as_span().end())
 }
 
 pub(super) fn read_attribute_list(
-    source: &str,
+    source: &ParseSource<'_>,
     cursor: &mut usize,
 ) -> Result<Vec<BsolAttribute>, BsolError> {
-    let mut attrs = Vec::new();
-    loop {
-        skip_ws_and_comments(source, cursor);
-        if source.as_bytes().get(*cursor) == Some(&b'[') {
-            let start = *cursor;
-            *cursor += 1;
-            let name = read_ident(source, cursor).ok_or_else(|| {
-                BsolError::parse_at(
-                    span_at(source, start, *cursor),
-                    "expected attribute name inside `[`",
-                )
-            })?;
-            skip_horizontal_ws(source, cursor);
-            let mut args = Vec::new();
-            if source.as_bytes().get(*cursor) == Some(&b'(') {
-                *cursor += 1;
-                loop {
-                    skip_horizontal_ws(source, cursor);
-                    if source.as_bytes().get(*cursor) == Some(&b')') {
-                        *cursor += 1;
-                        break;
-                    }
-                    let key = read_ident(source, cursor).ok_or_else(|| {
-                        BsolError::parse_at(
-                            span_at(source, start, *cursor),
-                            "expected attribute argument key",
-                        )
-                    })?;
-                    skip_horizontal_ws(source, cursor);
-                    if source.as_bytes().get(*cursor) != Some(&b'=') {
-                        return Err(BsolError::parse_at(
-                            span_at(source, start, *cursor),
-                            "expected `=` in attribute argument",
-                        ));
-                    }
-                    *cursor += 1;
-                    skip_horizontal_ws(source, cursor);
-                    let value_end = scan_value_end(source, *cursor, source.len())?;
-                    let raw = source.get(*cursor..value_end).unwrap_or("");
-                    let value = parse_value_text(raw, span_at(source, *cursor, value_end))?;
-                    args.push(BsolAttributeArg { key, value });
-                    *cursor = value_end;
-                    skip_horizontal_ws(source, cursor);
-                    if source.as_bytes().get(*cursor) == Some(&b',') {
-                        *cursor += 1;
-                    }
-                }
-            }
-            if source.as_bytes().get(*cursor) != Some(&b']') {
-                return Err(BsolError::parse_at(
-                    span_at(source, start, *cursor),
-                    "expected `]` to close attribute",
-                ));
-            }
-            *cursor += 1;
-            attrs.push(BsolAttribute {
-                span: span_at(source, start, *cursor),
-                name,
-                args,
-            });
-            continue;
-        }
-        if source.as_bytes().get(*cursor) != Some(&b'@') || is_schemaless_at(source, *cursor) {
-            break;
-        }
-        let start = *cursor;
-        *cursor += 1;
-        let name = read_ident(source, cursor).ok_or_else(|| {
-            BsolError::parse_at(
-                span_at(source, start, *cursor),
-                "expected attribute name after `@`",
-            )
-        })?;
-        skip_horizontal_ws(source, cursor);
-        let mut args = Vec::new();
-        if source.as_bytes().get(*cursor) == Some(&b'(') {
-            *cursor += 1;
-            loop {
-                skip_horizontal_ws(source, cursor);
-                if source.as_bytes().get(*cursor) == Some(&b')') {
-                    *cursor += 1;
-                    break;
-                }
-                let key = read_ident(source, cursor).ok_or_else(|| {
-                    BsolError::parse_at(
-                        span_at(source, start, *cursor),
-                        "expected attribute argument key",
-                    )
-                })?;
-                skip_horizontal_ws(source, cursor);
-                if source.as_bytes().get(*cursor) != Some(&b'=') {
-                    return Err(BsolError::parse_at(
-                        span_at(source, start, *cursor),
-                        "expected `=` in attribute argument",
-                    ));
-                }
-                *cursor += 1;
-                skip_horizontal_ws(source, cursor);
-                let value_end = scan_value_end(source, *cursor, source.len())?;
-                let raw = source.get(*cursor..value_end).unwrap_or("");
-                let value = parse_value_text(raw, span_at(source, *cursor, value_end))?;
-                args.push(BsolAttributeArg { key, value });
-                *cursor = value_end;
-                skip_horizontal_ws(source, cursor);
-                if source.as_bytes().get(*cursor) == Some(&b',') {
-                    *cursor += 1;
-                }
-            }
-        }
-        attrs.push(BsolAttribute {
-            span: span_at(source, start, *cursor),
-            name,
-            args,
-        });
+    use pest::Parser;
+    skip_ws_and_comments(source, cursor);
+    if source.as_bytes().get(*cursor) != Some(&b'@') || is_schemaless_at(source, *cursor) {
+        return Ok(Vec::new());
     }
-    Ok(attrs)
+    let start = *cursor;
+    let mut pairs = crate::BsolParser::parse(crate::Rule::attribute_list, &source[start..])
+        .map_err(|error| super::spans_errors::pest_error_with_offset(source, start, error))?;
+    let pair = pairs.next().ok_or_else(|| {
+        BsolError::parse_at(span_at(source, start, source.len()), "missing attribute")
+    })?;
+    *cursor = start + pair.as_span().end();
+    super::pest_ast_builder::build_attribute_list(pair, source, start)
 }
 
-pub(super) fn read_ident(source: &str, cursor: &mut usize) -> Option<String> {
+pub(super) fn read_ident(source: &ParseSource<'_>, cursor: &mut usize) -> Option<String> {
     let start = *cursor;
     let mut chars = source[*cursor..].chars();
     let first = chars.next()?;
@@ -359,25 +92,36 @@ pub(super) fn read_ident(source: &str, cursor: &mut usize) -> Option<String> {
     Some(source[start..*cursor].to_string())
 }
 
-pub(super) fn read_quoted_string(source: &str, cursor: &mut usize) -> Option<String> {
-    if source.as_bytes().get(*cursor) != Some(&b'"') {
+fn quoted_end(source: &ParseSource<'_>, start: usize) -> Option<usize> {
+    if source.as_bytes().get(start) != Some(&b'"') {
         return None;
     }
-    let start = *cursor;
-    *cursor += 1;
-    while *cursor < source.len() {
-        let ch = source[*cursor..].chars().next()?;
-        if ch == '"' {
-            let value = source.get(start + 1..*cursor)?.to_string();
-            *cursor += 1;
-            return Some(value);
+    let mut cursor = start + 1;
+    while cursor < source.len() {
+        match source.as_bytes()[cursor] {
+            b'\\' => {
+                cursor += 1;
+                let ch = source.get(cursor..)?.chars().next()?;
+                cursor += ch.len_utf8();
+            }
+            b'"' => return Some(cursor + 1),
+            _ => {
+                cursor += source[cursor..].chars().next()?.len_utf8();
+            }
         }
-        *cursor += ch.len_utf8();
     }
     None
 }
 
-pub(super) fn is_schemaless_at(source: &str, cursor: usize) -> bool {
+pub(super) fn read_quoted_string(source: &ParseSource<'_>, cursor: &mut usize) -> Option<String> {
+    let start = *cursor;
+    *cursor = quoted_end(source, start)?;
+    crate::BsolQuotedString::new(span_at(source, start, *cursor), &source[start..*cursor])
+        .ok()
+        .map(|q| q.value)
+}
+
+pub(super) fn is_schemaless_at(source: &ParseSource<'_>, cursor: usize) -> bool {
     source[cursor..].starts_with("@schemaless")
         && !source[cursor + "@schemaless".len()..]
             .chars()
@@ -385,7 +129,7 @@ pub(super) fn is_schemaless_at(source: &str, cursor: usize) -> bool {
             .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-pub(super) fn read_schemaless_marker(source: &str, cursor: &mut usize) -> bool {
+pub(super) fn read_schemaless_marker(source: &ParseSource<'_>, cursor: &mut usize) -> bool {
     if is_schemaless_at(source, *cursor) {
         *cursor += "@schemaless".len();
         return true;
@@ -393,7 +137,7 @@ pub(super) fn read_schemaless_marker(source: &str, cursor: &mut usize) -> bool {
     false
 }
 
-pub(super) fn skip_ws_and_comments(source: &str, cursor: &mut usize) {
+pub(super) fn skip_ws_and_comments(source: &ParseSource<'_>, cursor: &mut usize) {
     while *cursor < source.len() {
         let remaining = &source[*cursor..];
         if remaining.starts_with("//") {
@@ -423,25 +167,36 @@ pub(super) fn skip_ws_and_comments(source: &str, cursor: &mut usize) {
     }
 }
 
-pub(super) fn find_matching_close_brace(source: &str, open_brace: usize) -> Option<usize> {
-    debug_assert_eq!(source.as_bytes().get(open_brace), Some(&b'{'));
-    let mut depth = 0i32;
+pub(super) fn find_matching_close_brace(
+    source: &ParseSource<'_>,
+    open_brace: usize,
+) -> Option<usize> {
+    let mut depth = 0usize;
     let mut i = open_brace;
-    let mut in_string = false;
     while i < source.len() {
-        let b = source.as_bytes()[i];
-        match b {
-            b'"' => in_string = !in_string,
-            b'{' if !in_string => depth += 1,
-            b'}' if !in_string => {
-                depth -= 1;
+        match source.as_bytes()[i] {
+            b'"' => {
+                i = quoted_end(source, i)?;
+                continue;
+            }
+            b'#' => {
+                skip_ws_and_comments(source, &mut i);
+                continue;
+            }
+            b'/' if source[i..].starts_with("//") => {
+                skip_ws_and_comments(source, &mut i);
+                continue;
+            }
+            b'{' => depth += 1,
+            b'}' => {
+                depth = depth.checked_sub(1)?;
                 if depth == 0 {
                     return Some(i + 1);
                 }
             }
             _ => {}
         }
-        i += 1;
+        i += source[i..].chars().next()?.len_utf8();
     }
     None
 }

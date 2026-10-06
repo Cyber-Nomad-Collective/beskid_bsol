@@ -15,12 +15,15 @@ pub use migrate::{
 pub use registry::ValidatorRegistry;
 pub use resolver::{
     load_fetched_profile, load_profile_text, parse_pckg_shorthand, profile_base_dir,
-    resolve_active_profile, resolve_profile, CompositeSchemaSource, FileSchemaSource,
+    resolve_active_profile, resolve_profile, CompositeSchemaSource,
     SchemaCollection, SchemaSource,
 };
 pub use semantic::resolve_references;
 pub use session::{
     analyze_with_profile, validate_profile_document, AnalysisOptions, AnalysisSession,
 };
-pub use validate::{validate, validate_with, ValidatedBlock, ValidatedDocument};
+pub use validate::{
+    validate, validate_with, validate_with_pattern_limits, PatternLimits, ValidatedBlock,
+    ValidatedDocument,
+};
 pub use value::{ValidatedBlockLite, ValidatedValue};

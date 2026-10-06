@@ -285,6 +285,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "inline_block"
+        },
+        {
+          "type": "SYMBOL",
           "name": "ref_literal"
         },
         {
@@ -309,7 +313,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "decimal_unsigned"
+          "name": "number"
         }
       ]
     },
@@ -321,31 +325,44 @@
           "value": "{"
         },
         {
-          "type": "SYMBOL",
-          "name": "map_entry"
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "SEQ",
-            "members": [
-              {
-                "type": "STRING",
-                "value": ","
-              },
-              {
-                "type": "SYMBOL",
-                "name": "map_entry"
-              }
-            ]
-          }
-        },
-        {
           "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
-              "value": ","
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "map_entry"
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": ","
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "map_entry"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": ","
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -502,6 +519,10 @@
         {
           "type": "SYMBOL",
           "name": "inline_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "number"
         },
         {
           "type": "STRING",
@@ -679,13 +700,13 @@
       "type": "PATTERN",
       "value": "[A-Za-z_][A-Za-z0-9_]*"
     },
-    "decimal_unsigned": {
+    "number": {
       "type": "PATTERN",
-      "value": "[0-9]+"
+      "value": "-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?"
     },
     "string": {
       "type": "PATTERN",
-      "value": "\"[^\"]*\""
+      "value": "\"([^\"\\\\\\x00-\\x1f]|\\\\[\"\\\\nrtbf]|\\\\u[0-9A-Fa-f]{4})*\""
     },
     "comment": {
       "type": "TOKEN",

@@ -1,18 +1,18 @@
+use super::parse_source::ParseSource;
 use pest::iterators::Pair;
-use pest::Parser;
 
 use crate::error::BsolError;
-use crate::parser::{BsolParser, Rule};
+use crate::parser::Rule;
 
 use super::model::{
     BsolAssignment, BsolAttribute, BsolAttributeArg, BsolBlock, BsolBracketList, BsolInlineMap,
-    BsolItem, BsolListItem, BsolMapEntry, BsolQuotedString, BsolRef, BsolSpan, BsolValue,
+    BsolItem, BsolListItem, BsolMapEntry, BsolNumber, BsolQuotedString, BsolRef, BsolValue,
 };
 use super::spans_errors::{offset_span, span_at};
 
 pub(super) fn build_assignment(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     base: usize,
     outer_attrs: Vec<BsolAttribute>,
 ) -> Result<BsolAssignment, BsolError> {
@@ -25,7 +25,7 @@ pub(super) fn build_assignment(
     let mut attrs = outer_attrs;
     if let Some(next) = inner.peek() {
         if next.as_rule() == Rule::attribute_list {
-            attrs.extend(build_attribute_list(inner.next().unwrap(), source, base)?);
+            attrs = build_attribute_list(inner.next().unwrap(), source, base)?;
         }
     }
     let key_pair = inner
@@ -44,9 +44,9 @@ pub(super) fn build_assignment(
     })
 }
 
-fn build_attribute_list(
+pub(super) fn build_attribute_list(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<Vec<BsolAttribute>, BsolError> {
     let mut attrs = Vec::new();
@@ -60,7 +60,7 @@ fn build_attribute_list(
 
 fn build_attribute(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolAttribute, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
@@ -93,7 +93,7 @@ fn build_attribute(
 
 fn build_value(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolValue, BsolError> {
     let inner = pair
@@ -105,8 +105,27 @@ fn build_value(
             inner,
             source,
             source_offset,
-        ))),
-        Rule::bare_token => Ok(BsolValue::Ident(inner.as_str().to_string())),
+        )?)),
+        Rule::bare_token => {
+            let text = inner.as_str();
+            if matches!(text, "NaN" | "Infinity") {
+                return Err(BsolError::parse_at(
+                    offset_span(source, source_offset, inner.as_span()),
+                    "nonfinite number",
+                ));
+            }
+            Ok(BsolValue::Ident(text.to_string()))
+        }
+        Rule::number => Ok(BsolValue::Number(build_number(
+            inner,
+            source,
+            source_offset,
+        )?)),
+        Rule::inline_block => Ok(BsolValue::InlineBlock(build_inline_block(
+            inner,
+            source,
+            source_offset,
+        )?)),
         Rule::bool_literal => Ok(BsolValue::Bool(inner.as_str() == "true")),
         Rule::bracket_list => Ok(BsolValue::BracketList(build_bracket_list(
             inner,
@@ -132,7 +151,7 @@ fn build_value(
 
 fn build_ref_from_pair(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolRef, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
@@ -144,7 +163,7 @@ fn build_ref_from_pair(
     let first = parts
         .next()
         .ok_or_else(|| BsolError::parse_at(span, "empty reference path"))?;
-    if first.as_rule() == Rule::ident {
+    if matches!(first.as_rule(), Rule::ident | Rule::qualified_ident) {
         if let Some(second) = parts.next() {
             return Ok(BsolRef {
                 span,
@@ -163,7 +182,7 @@ fn build_ref_from_pair(
 
 fn build_inline_map(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolInlineMap, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
@@ -191,14 +210,34 @@ fn build_inline_map(
     Ok(BsolInlineMap { span, entries })
 }
 
-fn build_quoted_string(pair: Pair<Rule>, source: &str, source_offset: usize) -> BsolQuotedString {
+fn build_number(
+    pair: Pair<Rule>,
+    source: &ParseSource<'_>,
+    offset: usize,
+) -> Result<BsolNumber, BsolError> {
+    let raw = pair.as_str();
+    let span = offset_span(source, offset, pair.as_span());
+    if raw.contains(['.', 'e', 'E']) && !raw.parse::<f64>().is_ok_and(f64::is_finite) {
+        return Err(BsolError::parse_at(span, "nonfinite decimal"));
+    }
+    Ok(BsolNumber {
+        span,
+        raw: raw.to_string(),
+    })
+}
+
+fn build_quoted_string(
+    pair: Pair<Rule>,
+    source: &ParseSource<'_>,
+    source_offset: usize,
+) -> Result<BsolQuotedString, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
     BsolQuotedString::new(span, pair.as_str())
 }
 
 fn build_bracket_list(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolBracketList, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
@@ -219,7 +258,7 @@ fn build_bracket_list(
 
 fn build_list_item(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolListItem, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
@@ -234,7 +273,14 @@ fn build_list_item(
                     inner,
                     source,
                     source_offset,
-                )));
+                )?));
+            }
+            Rule::number => {
+                return Ok(BsolListItem::Number(build_number(
+                    inner,
+                    source,
+                    source_offset,
+                )?));
             }
             Rule::ident => return Ok(BsolListItem::Ident(inner.as_str().to_string())),
             Rule::bool_literal => {
@@ -272,65 +318,52 @@ fn build_list_item(
 
 fn build_inline_block(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolBlock, BsolError> {
     let span = offset_span(source, source_offset, pair.as_span());
-    let raw = pair.as_str();
     let mut inner = pair.into_inner();
     let kind = inner
-        .find(|p| p.as_rule() == Rule::block_kind)
-        .map(|p| p.as_str().to_string())
-        .or_else(|| {
-            raw.split('{')
-                .next()
-                .map(|s| s.split_whitespace().next().unwrap_or("").to_string())
-                .filter(|s| !s.is_empty())
-        })
-        .ok_or_else(|| BsolError::parse_at(span, "missing inline block kind"))?;
-    let label = inner.find(|p| p.as_rule() == Rule::quoted_string).map(|p| {
-        BsolQuotedString::new(offset_span(source, source_offset, p.as_span()), p.as_str())
-    });
-    let mut items = Vec::new();
-    if let Some(body) = inner.find(|p| p.as_rule() == Rule::block_body) {
-        for item in body.into_inner() {
-            match item.as_rule() {
-                Rule::assignment => {
-                    items.push(BsolItem::Assignment(build_assignment(
-                        item,
-                        source,
-                        source_offset,
-                        Vec::new(),
-                    )?));
-                }
-                Rule::block => {
-                    items.push(BsolItem::Block(build_inline_block_as_block(
-                        item,
-                        source,
-                        source_offset,
-                    )?));
-                }
-                _ => {}
-            }
-        }
-    } else if let (Some(open), Some(close)) = (raw.find('{'), raw.rfind('}')) {
-        let body_text = &raw[open + 1..close];
-        if let Ok(mut parsed) = BsolParser::parse(Rule::block_body, body_text) {
-            if let Some(body_pair) = parsed.next() {
-                for item in body_pair.into_inner() {
-                    if item.as_rule() == Rule::assignment {
-                        items.push(BsolItem::Assignment(build_assignment(
-                            item,
-                            source,
-                            source_offset + open + 1,
-                            Vec::new(),
-                        )?));
-                    }
-                }
-            }
-        }
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "missing inline block kind"))?
+        .as_str()
+        .to_string();
+    let label = if inner
+        .peek()
+        .is_some_and(|p| p.as_rule() == Rule::quoted_string)
+    {
+        Some(build_quoted_string(
+            inner.next().unwrap(),
+            source,
+            source_offset,
+        )?)
     } else {
-        return Err(BsolError::parse_at(span, "missing inline block body"));
+        None
+    };
+    let body = inner
+        .next()
+        .ok_or_else(|| BsolError::parse_at(span, "missing inline block body"))?;
+    let mut items = Vec::new();
+    for item in body.into_inner() {
+        let item = if item.as_rule() == Rule::block_item {
+            item.into_inner().next().unwrap()
+        } else {
+            item
+        };
+        match item.as_rule() {
+            Rule::assignment => items.push(BsolItem::Assignment(build_assignment(
+                item,
+                source,
+                source_offset,
+                Vec::new(),
+            )?)),
+            Rule::block => items.push(BsolItem::Block(build_inline_block_as_block(
+                item,
+                source,
+                source_offset,
+            )?)),
+            _ => return Err(BsolError::parse_at(span, "unexpected inline block item")),
+        }
     }
     Ok(BsolBlock {
         span,
@@ -344,65 +377,10 @@ fn build_inline_block(
 
 fn build_inline_block_as_block(
     pair: Pair<Rule>,
-    source: &str,
+    source: &ParseSource<'_>,
     source_offset: usize,
 ) -> Result<BsolBlock, BsolError> {
-    let span = offset_span(source, source_offset, pair.as_span());
-    let mut inner = pair.into_inner();
-    let mut attrs = Vec::new();
-    if let Some(next) = inner.peek() {
-        if next.as_rule() == Rule::attribute_list {
-            attrs = build_attribute_list(inner.next().unwrap(), source, source_offset)?;
-        }
-    }
-    let kind = inner
-        .next()
-        .ok_or_else(|| BsolError::parse_at(span, "missing block kind"))?
-        .as_str()
-        .to_string();
-    let label = inner.find(|p| p.as_rule() == Rule::quoted_string).map(|p| {
-        BsolQuotedString::new(offset_span(source, source_offset, p.as_span()), p.as_str())
-    });
-    let body = inner
-        .find(|p| p.as_rule() == Rule::block_body)
-        .ok_or_else(|| BsolError::parse_at(span, "missing block body"))?;
-    let mut items = Vec::new();
-    for item in body.into_inner() {
-        match item.as_rule() {
-            Rule::assignment => {
-                items.push(BsolItem::Assignment(build_assignment(
-                    item,
-                    source,
-                    source_offset,
-                    Vec::new(),
-                )?));
-            }
-            Rule::block => {
-                items.push(BsolItem::Block(build_inline_block_as_block(
-                    item,
-                    source,
-                    source_offset,
-                )?));
-            }
-            _ => {}
-        }
-    }
-    Ok(BsolBlock {
-        span,
-        attrs,
-        kind,
-        label,
-        schemaless_body: None,
-        items,
-    })
-}
-
-pub(super) fn parse_value_text(raw: &str, span: BsolSpan) -> Result<BsolValue, BsolError> {
-    let trimmed = raw.trim();
-    let mut pairs = BsolParser::parse(Rule::value, trimmed)
-        .map_err(|err| BsolError::parse_at(span, err.to_string()))?;
-    let pair = pairs
-        .next()
-        .ok_or_else(|| BsolError::parse_at(span, "empty attribute value"))?;
-    build_value(pair, trimmed, 0)
+    let (block, _) =
+        super::block_parser::parse_block_at(source, source_offset + pair.as_span().start())?;
+    Ok(block)
 }

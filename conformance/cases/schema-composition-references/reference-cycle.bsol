@@ -1,0 +1,2 @@
+item "one" { next = @item/two }
+item "two" { next = @item/one }

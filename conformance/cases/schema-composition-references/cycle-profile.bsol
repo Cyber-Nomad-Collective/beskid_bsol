@@ -1,0 +1,6 @@
+profile "composition.v2" { version = 2
+  rule "left" { scope = top match = keyword keyword = left label = optional cardinality = many mixes = [right]
+  }
+  rule "right" { scope = top match = keyword keyword = right label = optional cardinality = many extends = left
+  }
+}

@@ -1,0 +1,1 @@
+profile "bad-type.v2" { version = 2 rule "config" { scope = top match = keyword keyword = config label = forbidden cardinality = one field "items" { type = list[quoted|made_up] required = true } } }

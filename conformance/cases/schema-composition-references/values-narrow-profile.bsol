@@ -1,0 +1,4 @@
+profile "values.v2" { version = 2
+ rule "base" { keyword = base field "color" { type = enum_or_quoted values = [red,blue] } }
+ rule "leaf" { keyword = leaf extends = base field "color" { type = enum_or_quoted values = [red] } }
+}

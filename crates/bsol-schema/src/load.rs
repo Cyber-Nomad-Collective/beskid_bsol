@@ -1,5 +1,6 @@
 //! Bootstrap loader: parse declarative schema profile documents into [`SchemaProfile`].
 
+mod defaults;
 mod document;
 mod embedded_profiles;
 mod fields;

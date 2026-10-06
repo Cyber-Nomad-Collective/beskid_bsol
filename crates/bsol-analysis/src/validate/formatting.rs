@@ -1,60 +1,38 @@
-use bsol_syntax::{BsolAssignment, BsolInlineMap, BsolListItem, BsolValue};
-
 use crate::BsolError;
+use bsol_syntax::{BsolAssignment, BsolValue};
 
 pub(super) fn extra_field_value(assignment: &BsolAssignment) -> Result<String, BsolError> {
     match &assignment.value {
         BsolValue::QuotedString(q) => Ok(q.value.clone()),
         BsolValue::Ident(i) => Ok(i.clone()),
+        BsolValue::Number(n) => Ok(n.raw.clone()),
         BsolValue::Bool(b) => Ok(b.to_string()),
         BsolValue::Ref(r) => Ok(r.display()),
-        BsolValue::BracketList(list) => Ok(format_bracket_list_literal(list)),
-        BsolValue::InlineMap(map) => Ok(format_map_literal(map)),
+        structured => bsol_syntax::write_bsol_value(structured).map_err(BsolError::from),
     }
 }
 
-fn format_map_literal(map: &BsolInlineMap) -> String {
-    let mut out = String::from("{");
-    for (index, entry) in map.entries.iter().enumerate() {
-        if index > 0 {
-            out.push_str(", ");
-        }
-        out.push_str(&entry.key);
-        out.push_str(" = ");
-        out.push_str(&entry.value.preview());
-    }
-    out.push('}');
-    out
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bsol_syntax::{parse_bsol_document, BsolItem};
 
-fn format_bracket_list_literal(list: &bsol_syntax::BsolBracketList) -> String {
-    let mut out = String::from("[");
-    for (index, item) in list.items.iter().enumerate() {
-        if index > 0 {
-            out.push_str(", ");
-        }
-        match item {
-            BsolListItem::Default => out.push_str("default"),
-            BsolListItem::QuotedString(q) => {
-                out.push('"');
-                out.push_str(&q.value);
-                out.push('"');
-            }
-            BsolListItem::Ident(i) => out.push_str(i),
-            BsolListItem::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
-            BsolListItem::Ref(r) => out.push_str(&r.display()),
-            BsolListItem::InlineMap(m) => out.push_str(&format_map_literal(m)),
-            BsolListItem::InlineBlock(b) => {
-                out.push_str(&b.kind);
-                if let Some(label) = &b.label {
-                    out.push('"');
-                    out.push_str(&label.value);
-                    out.push('"');
-                }
-                out.push_str(" { ... }");
-            }
-        }
+    #[test]
+    fn structured_extra_field_format_preserves_nested_values_and_escapes() {
+        let source = r#"config { data = [value "record" { nested = value "string" { data = "quote\"line\n" } }] }"#;
+        let doc = parse_bsol_document(source).unwrap();
+        let BsolItem::Assignment(assignment) = &doc.blocks[0].items[0] else {
+            panic!("assignment");
+        };
+        let text = extra_field_value(assignment).unwrap();
+        assert!(
+            text.contains("quote\\\"line\\n"),
+            "lost nested escaped value: {text}"
+        );
+        let reparsed = parse_bsol_document(&format!("config {{ data = {text} }}")).unwrap();
+        let BsolItem::Assignment(a) = &reparsed.blocks[0].items[0] else {
+            panic!("assignment");
+        };
+        assert!(matches!(&a.value, BsolValue::BracketList(list) if list.items.len() == 1));
     }
-    out.push(']');
-    out
 }

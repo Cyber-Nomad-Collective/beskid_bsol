@@ -1,0 +1,256 @@
+{
+  "semantics": "Core.Text.Regex.Matches start0, nonempty, bounded sequence-aware quantifiers; full regex.pest escapes",
+  "subjectMaxBytes": 1048576,
+  "workBudget": "Pattern bytes once; each emitted NFA state including initial Accept; closure visit/split branch/matched atom/inspected class range; LIFO alternatives; one generation-mark array.",
+  "cases": [
+    {
+      "name": "anchored-match",
+      "pattern": "^abc$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "04b218c15b8090630ce4ddfc90888ae6b1edd4b7010d1a95eff7745f94f9d6f4",
+      "inputSha256": "d1ba873d2e6bdcb6da14a3307ec73ce0af8d9f69f7fa8157e8457eb87304bd21"
+    },
+    {
+      "name": "anchored-reject",
+      "pattern": "^abc$",
+      "subjectBytes": 4,
+      "outcome": "PatternMismatch",
+      "profileSha256": "04b218c15b8090630ce4ddfc90888ae6b1edd4b7010d1a95eff7745f94f9d6f4",
+      "inputSha256": "bb713746a4b85eb223ae44e9edec6283e2697c8a7ec6c85e64a65d01da4bd8ef"
+    },
+    {
+      "name": "prefix-match",
+      "pattern": "abc",
+      "subjectBytes": 6,
+      "outcome": "ok",
+      "profileSha256": "175b99d29141817e6de6acc7de5cfe4a1683ef3ea58d3d3eedb4e5ffa88a186c",
+      "inputSha256": "1f540d599c0593241424d8d3f579f28620ec4541ace63f6d3660bb3eb96b5c4d"
+    },
+    {
+      "name": "substring-reject",
+      "pattern": "abc",
+      "subjectBytes": 4,
+      "outcome": "PatternMismatch",
+      "profileSha256": "175b99d29141817e6de6acc7de5cfe4a1683ef3ea58d3d3eedb4e5ffa88a186c",
+      "inputSha256": "bb713746a4b85eb223ae44e9edec6283e2697c8a7ec6c85e64a65d01da4bd8ef"
+    },
+    {
+      "name": "alternation",
+      "pattern": "^(cat|dog)$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "02ffa5e4c4d14d986799c460c1578d4d101fbdd569c5693ba31cc3e9238a343a",
+      "inputSha256": "ecdaae4cbd120ab9d3077af874af0cded61bcbaa2419e73aa5a9af1bcb43d20f"
+    },
+    {
+      "name": "group-plus",
+      "pattern": "^(ab)+$",
+      "subjectBytes": 4,
+      "outcome": "ok",
+      "profileSha256": "241d44990755913d51efdfeecfa0c49e8c12c3efaecc04084103345aa2644289",
+      "inputSha256": "37d561af712cd1633d49570c857a48e4f0ee5e3febcfadf628737ef77f4bde98"
+    },
+    {
+      "name": "class-range",
+      "pattern": "^[A-Z][a-z]+$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "c2a2be044c8c420a6c103c62b3610b5048da69daa7b2927936ac344be4505b35",
+      "inputSha256": "46aa813a374a2a925b1271ab93911dbddd4dee6a13d2241c094fec4bf420a692"
+    },
+    {
+      "name": "negated-class",
+      "pattern": "^[^0-9]+$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "6cc6bda900036b74f9f34aa8c2eacfc42b72897abdb4f15cf2b9fe12c3fe6353",
+      "inputSha256": "d1ba873d2e6bdcb6da14a3307ec73ce0af8d9f69f7fa8157e8457eb87304bd21"
+    },
+    {
+      "name": "escaped-digit",
+      "pattern": "^\\d+$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "494986e39d778dc8494bcde3c068761c386710463eced0d783f7e116b784d079",
+      "inputSha256": "2417151dc922a6cde9e5ab25875b1434251424148a245cf537b8dc097f05e891"
+    },
+    {
+      "name": "escaped-literal",
+      "pattern": "^a\\+b$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "e806f73383bcdc8a298a5c77649b657afe77a36c32c336f3282c263c27e27934",
+      "inputSha256": "81cbd0df2830e2d24e57db3d56f54c190650acc3b994c178a8d005d2d197333c"
+    },
+    {
+      "name": "grammar-escaped-brace",
+      "pattern": "^\\{a\\}$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "e620458bdecb20781a509e4677059ba62317064237735c1d86d6b38dd790a95b",
+      "inputSha256": "283bc0fd84ccf3cdc71e620298ecc191b1f06e9c3c9988e541e016d064481d95"
+    },
+    {
+      "name": "quantified-sequence-backtrack",
+      "pattern": "^a+a$",
+      "subjectBytes": 3,
+      "outcome": "ok",
+      "profileSha256": "f2b08caaf09a235e62b8f8d34db576637bc469bdea793cda5515a47e163dff63",
+      "inputSha256": "0e17b005af3b8805b030b4ca602f71ff2db0c115cb3f55700fec1b084d6740cd"
+    },
+    {
+      "name": "empty-match-reject",
+      "pattern": "a*",
+      "subjectBytes": 0,
+      "outcome": "PatternMismatch",
+      "profileSha256": "39543c24d87c3d28b999536281a365c3094303f56e19aaca4d663c7839b2b1fa",
+      "inputSha256": "c33f22232a91f34be60ca70a507164689795948f7270ec70265b06f28a39eeee"
+    },
+    {
+      "name": "optional-zero-occurrence",
+      "pattern": "a?b",
+      "subjectBytes": 1,
+      "outcome": "ok",
+      "profileSha256": "fb57f9676506e890b19eb52de20e9aa8dc1737792070f689744836b724f6956a",
+      "inputSha256": "c44a4928c40ff40600453ebd7c17d8dfc05bf622226ad297d5c90d6e430c66bb"
+    },
+    {
+      "name": "star-zero-occurrence",
+      "pattern": "a*b",
+      "subjectBytes": 1,
+      "outcome": "ok",
+      "profileSha256": "e7109b8f44518bd4ea87c33c38c01dd9a10d1bc872f0a3758267c8d9acd27c26",
+      "inputSha256": "c44a4928c40ff40600453ebd7c17d8dfc05bf622226ad297d5c90d6e430c66bb"
+    },
+    {
+      "name": "invalid-open-group",
+      "pattern": "(abc",
+      "subjectBytes": 3,
+      "outcome": "InvalidPattern",
+      "profileSha256": "dc998808312bde1aca25902e4a2163e6b7438d401c75b542f7cc0a9ef159acd9",
+      "inputSha256": "d1ba873d2e6bdcb6da14a3307ec73ce0af8d9f69f7fa8157e8457eb87304bd21"
+    },
+    {
+      "name": "invalid-empty-alternative",
+      "pattern": "a|",
+      "subjectBytes": 1,
+      "outcome": "InvalidPattern",
+      "profileSha256": "0db87858461b64be3729682708c7b7004ee66aac074ab1b1b209b2d8c6893da5",
+      "inputSha256": "fb6569d6b3e43d4c0ee9d852e7732d399454a78812b670e47da04e6e2ddd6d05"
+    },
+    {
+      "name": "unsupported-lookaround",
+      "pattern": "(?=a)a",
+      "subjectBytes": 1,
+      "outcome": "InvalidPattern",
+      "profileSha256": "b2c6f1a6c90e86e7760d9733d0b72f33c3ba65cc1c79746e43edd2721805166c",
+      "inputSha256": "fb6569d6b3e43d4c0ee9d852e7732d399454a78812b670e47da04e6e2ddd6d05"
+    },
+    {
+      "name": "unsupported-backreference",
+      "pattern": "(a)\\1",
+      "subjectBytes": 2,
+      "outcome": "InvalidPattern",
+      "profileSha256": "29b91bcfa520e40bb6903885ebc3f729c78f715b1d5165ed84a6cfba1b4738fb",
+      "inputSha256": "05dcc278c1db30eb4da458f7a28228691a7d10c7dbed2cd886a00b0b29e29579"
+    },
+    {
+      "name": "unsupported-counted",
+      "pattern": "a{2}",
+      "subjectBytes": 2,
+      "outcome": "InvalidPattern",
+      "profileSha256": "3632c7cc9a82e43b6ee31bec9a63fb2ffd12451540f989a5f5cf1fd269b77e61",
+      "inputSha256": "05dcc278c1db30eb4da458f7a28228691a7d10c7dbed2cd886a00b0b29e29579"
+    },
+    {
+      "name": "subject-at-limit",
+      "pattern": ".",
+      "subjectBytes": 1048576,
+      "outcome": "ok",
+      "profileSha256": "043e9a26cc7ee125133628fd4fa09fc5d46512b401b55b072c3b6f5dae3006d0",
+      "inputSha256": "8f9b53351464acfa1f9c25b92ac8abf9f4ac1ed91ac9dc49679fb0f5a0297b89"
+    },
+    {
+      "name": "subject-over-limit",
+      "pattern": ".",
+      "subjectBytes": 1048577,
+      "outcome": "PatternSubjectLimit",
+      "profileSha256": "043e9a26cc7ee125133628fd4fa09fc5d46512b401b55b072c3b6f5dae3006d0",
+      "inputSha256": "d35d096a179e87a507308c6979287c0e6a9be58f31ac27556441ad5f3e42f4c0",
+      "bsolMaxScalarBytes": 1048577,
+      "policyNote": "Explicit syntax scalar raise isolates PatternSubjectLimit; ordinary BSOL scalar default remains 1048576."
+    },
+    {
+      "name": "nested-work-limit",
+      "pattern": "((((((((((((((((((((((((((((((((a+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+$",
+      "subjectBytes": 700001,
+      "outcome": "PatternWorkLimit",
+      "profileSha256": "5f1a842c879c37a49c1ba3f221b3b772996cdffbe1ecfd4ba564eff589ae4955",
+      "inputSha256": "b9ea8e9431cc32f5e0d76cf9355b6f8e0cc124355c8f4315aaa2ef9fce409e73"
+    },
+    {
+      "name": "unicode-dot-accent",
+      "pattern": "^.$",
+      "subjectBytes": 2,
+      "outcome": "ok",
+      "profileSha256": "e853924b584f92ea93cbda243b5b107944ed2b2f681fa24364d60c898faa9d33",
+      "inputSha256": "9921bdb57fd27a1252ef602280ad9007e201437cad718769b60789695f733033"
+    },
+    {
+      "name": "unicode-dot-astral",
+      "pattern": "^.$",
+      "subjectBytes": 4,
+      "outcome": "ok",
+      "profileSha256": "e853924b584f92ea93cbda243b5b107944ed2b2f681fa24364d60c898faa9d33",
+      "inputSha256": "9a879f79fbf994c1f383c0acf92adf3144ddf0c32c945561082b6a4453f31a42"
+    },
+    {
+      "name": "unicode-class-accent",
+      "pattern": "^[\u00e9]$",
+      "subjectBytes": 2,
+      "outcome": "ok",
+      "profileSha256": "8c02f335cc06987669a967a6ede78573068178dbc74dcad19bed8c2a279d4a32",
+      "inputSha256": "9921bdb57fd27a1252ef602280ad9007e201437cad718769b60789695f733033"
+    },
+    {
+      "name": "unicode-class-range",
+      "pattern": "^[\u00e0-\u00ea]$",
+      "subjectBytes": 2,
+      "outcome": "ok",
+      "profileSha256": "6acd4f4e77d87a49a7dd062c9ec91ed3a836081794ebad9c45ef80f4323eec87",
+      "inputSha256": "9921bdb57fd27a1252ef602280ad9007e201437cad718769b60789695f733033"
+    },
+    {
+      "name": "unicode-class-astral-range",
+      "pattern": "^[\ud83d\ude00-\ud83d\ude4f]$",
+      "subjectBytes": 4,
+      "outcome": "ok",
+      "profileSha256": "cde82b76c8a5a51fe908d75e5374891786ade0cfb80cc743e95731eb5b59a3c8",
+      "inputSha256": "d2dabe84bbfdf7037b4f267397ce63776d5b73ef1fcfac1220e23e9189813b24"
+    },
+    {
+      "name": "unicode-reject-two-scalars",
+      "pattern": "^.$",
+      "subjectBytes": 6,
+      "outcome": "PatternMismatch",
+      "profileSha256": "e853924b584f92ea93cbda243b5b107944ed2b2f681fa24364d60c898faa9d33",
+      "inputSha256": "c602b9a3244d09ee27137035a14c7952ad6f6728c4718faad73f8c1ecfb65cd9"
+    },
+    {
+      "name": "unicode-class-reject",
+      "pattern": "^[\u00e0-\u00ea]$",
+      "subjectBytes": 2,
+      "outcome": "PatternMismatch",
+      "profileSha256": "6acd4f4e77d87a49a7dd062c9ec91ed3a836081794ebad9c45ef80f4323eec87",
+      "inputSha256": "9a285bdeb23456d12e4c85696a8be07c91eb9d39b7762695232ec30dc61ae6a6"
+    }
+  ],
+  "grammar": {
+    "authorityPath": "compiler/corelib/packages/foundation/grammars/regex.pest",
+    "sha256": "75f08674a3e58de0b8e3729c3ecb87fe5f8fbef8a89a18981701c2d41aa46842",
+    "hostAdapterPath": "beskid_bsol/crates/bsol-schema/src/regex.pest",
+    "hostEntry": "full_pattern = SOI ~ pat ~ EOI",
+    "hostPreservesAuthorityPrefix": true
+  }
+}

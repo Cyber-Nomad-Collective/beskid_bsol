@@ -1,0 +1,1 @@
+config { source = git name = "explicit" count = 5 url = "https://example.test" rev = "exact" }

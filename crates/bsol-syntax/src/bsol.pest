@@ -25,21 +25,23 @@ block_item = { assignment | block }
 assignment = { attribute_list? ~ ident ~ "=" ~ value }
 
 value = {
-    inline_map
+    inline_block
+  | inline_map
   | ref_literal
   | bool_literal
   | bracket_list
   | quoted_string
+  | number
   | bare_token
 }
 
-inline_map = { "{" ~ map_entry ~ ("," ~ map_entry)* ~ ","? ~ "}" }
+inline_map = { "{" ~ (map_entry ~ ("," ~ map_entry)* ~ ","?)? ~ "}" }
 map_entry = { ident ~ "=" ~ value }
 
 ref_literal = { "@" ~ ref_path }
-ref_path = { (ident ~ "/")? ~ ident }
+ref_path = { (qualified_ident ~ "/" ~ ident) | ident }
 
-bool_literal = { "true" | "false" }
+bool_literal = @{ ("true" | "false") ~ !(ASCII_ALPHANUMERIC | "_") }
 
 bracket_list = { "[" ~ list_content? ~ "]" }
 list_content = { list_item ~ ("," ~ list_item)* ~ ","? }
@@ -50,18 +52,21 @@ list_item = {
   | inline_block
   | "default"
   | quoted_string
+  | number
   | ident
 }
 
 inline_block = { block_kind ~ quoted_string? ~ "{" ~ block_body ~ "}" }
 
-quoted_string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
-bare_token = @{ type_expr | ident | decimal_unsigned }
-type_expr = { map_type | list_type | ref_type | ident ~ ("(" ~ ident ~ ")") }
+quoted_string = @{ "\"" ~ (escape | !("\"" | "\\" | '\u{0000}'..'\u{001f}') ~ ANY)* ~ "\"" }
+escape = { "\\" ~ ("\"" | "\\" | "n" | "r" | "t" | "b" | "f" | "u" ~ ASCII_HEX_DIGIT{4}) }
+bare_token = @{ type_expr | ident }
+type_expr = { map_type | list_type | ref_type | ident ~ ("(" ~ qualified_ident ~ ")") }
 map_type = { "map" ~ "[" ~ type_atom ~ "," ~ type_atom ~ "]" }
 list_type = { "list" ~ "[" ~ type_union ~ "]" }
-ref_type = { "ref" ~ "(" ~ ident ~ ")" }
+ref_type = { "ref" ~ "(" ~ qualified_ident ~ ")" }
 type_union = { type_atom ~ ("|" ~ type_atom)* }
-type_atom = { map_type | list_type | ref_type | ident ~ ("(" ~ ident ~ ")")? | ident }
+type_atom = { map_type | list_type | ref_type | ident ~ ("(" ~ qualified_ident ~ ")")? | ident }
+qualified_ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* ~ ("." ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*)* }
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
-decimal_unsigned = @{ ASCII_DIGIT+ }
+number = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT+)? ~ (("e" | "E") ~ ("+" | "-")? ~ ASCII_DIGIT+)? ~ !(ASCII_ALPHANUMERIC | "_" | ".") }

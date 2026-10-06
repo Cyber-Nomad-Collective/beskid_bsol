@@ -1,0 +1,10 @@
+profile "composition.v2" { version = 2
+  rule "item" { scope = top match = keyword keyword = item label = optional cardinality = many 
+    field "next" { type = ref(item) }
+  }
+  rule "other" { scope = top match = keyword keyword = other label = optional cardinality = many 
+  }
+  rule "config" { scope = top match = keyword keyword = config label = optional cardinality = many 
+    field "target" { type = ref(item) required = true }
+  }
+}

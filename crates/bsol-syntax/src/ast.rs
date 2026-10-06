@@ -54,10 +54,19 @@ pub struct BsolAssignment {
 pub enum BsolValue {
     QuotedString(BsolQuotedString),
     Ident(String),
+    Number(BsolNumber),
+    InlineBlock(BsolBlock),
     Bool(bool),
     BracketList(BsolBracketList),
     InlineMap(BsolInlineMap),
     Ref(BsolRef),
+}
+
+/// Exact numeric spelling; integer precision is not restricted by host floating types.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BsolNumber {
+    pub span: BsolSpan,
+    pub raw: String,
 }
 
 /// Cross-block reference: `@kind/label` or `@/label`.
@@ -103,6 +112,7 @@ pub enum BsolListItem {
     Default,
     QuotedString(BsolQuotedString),
     Ident(String),
+    Number(BsolNumber),
     Bool(bool),
     Ref(BsolRef),
     InlineMap(BsolInlineMap),
@@ -121,19 +131,21 @@ impl BsolSpan {
     pub fn from_pest(span: pest::Span<'_>, source: &str) -> Self {
         let start = span.start();
         let end = span.end();
-        let line = source[..start.min(source.len())].lines().count().max(1);
+        let line = source[..start.min(source.len())]
+            .bytes()
+            .filter(|b| *b == b'\n')
+            .count()
+            + 1;
         Self { start, end, line }
     }
 }
 
 impl BsolQuotedString {
-    pub fn new(span: BsolSpan, raw: &str) -> Self {
-        let value = raw
-            .strip_prefix('"')
-            .and_then(|s| s.strip_suffix('"'))
-            .unwrap_or(raw)
-            .to_string();
-        Self { span, value }
+    pub fn new(span: BsolSpan, raw: &str) -> Result<Self, crate::BsolError> {
+        let value = serde_json::from_str::<String>(raw).map_err(|error| {
+            crate::BsolError::parse_at(span, format!("invalid string: {error}"))
+        })?;
+        Ok(Self { span, value })
     }
 }
 
@@ -143,6 +155,8 @@ impl BsolValue {
         match self {
             BsolValue::QuotedString(q) => format!("\"{}\"", q.value),
             BsolValue::Ident(i) => i.clone(),
+            BsolValue::Number(n) => n.raw.clone(),
+            BsolValue::InlineBlock(b) => format!("{} {{...}}", b.kind),
             BsolValue::Bool(b) => b.to_string(),
             BsolValue::BracketList(_) => "[...]".to_string(),
             BsolValue::InlineMap(_) => "{...}".to_string(),
@@ -155,7 +169,7 @@ impl BsolRef {
     pub fn display(&self) -> String {
         match &self.rule_kind {
             Some(kind) => format!("@{kind}/{}", self.label),
-            None => format!("@/{}", self.label),
+            None => format!("@{}", self.label),
         }
     }
 }

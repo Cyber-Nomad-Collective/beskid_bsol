@@ -17,7 +17,24 @@ BSOL and its Beskid-owned crates are Apache-2.0. See
 | [`bsol-analysis`](crates/bsol-analysis) | Validation, schema import resolution, session |
 | [`bsol`](crates/bsol) | Facade crate for applications |
 | [`bsol-lsp`](crates/bsol-lsp) | Language server binary |
-| [`bsol-beskid-bridge`](crates/bsol-beskid-bridge) | Optional `@pckg/` import resolution |
+| [`bsol-beskid-bridge`](crates/bsol-beskid-bridge) | Controlled offline file/Git/registry import bytes with exact content locks |
+
+Schema imports require an explicitly configured host. `LockedSchemaHost` opens a
+controlled materialization root and accepts a lock inventory; it never fetches
+missing artifacts. Each lock contains `request` (tagged by `source`: `file`,
+`git`, or `registry`), `canonical_identity`, `materialized_path`, and
+`source_sha256` (an array of exactly 32 byte integers). Git requests include
+`url`, full immutable `revision`, and `path`; registry requests include
+`package`, exact SemVer `version`, and `path`. Package shorthand normalizes to
+the same registry request. All paths are portable root-relative paths.
+
+CLI BSOL validation accepts paired `--schema-import-root ROOT` and
+`--schema-import-lock LOCK.json` options. The lock file is a JSON array of these
+entries, capped at 1 MiB and 4096 entries. Reads use the opened directory
+capability, reject escaping symlinks and changed digests, and return owned UTF-8
+source. The bootstrap adapter parses those verified bytes with Rust tooling;
+native consumers use the same owned-byte host contract with Beskid corelib.
+An analysis session has no implicit filesystem import resolver.
 
 ## Quick start
 

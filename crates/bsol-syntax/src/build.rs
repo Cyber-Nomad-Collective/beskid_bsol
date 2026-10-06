@@ -2,6 +2,7 @@
 
 mod block_parser;
 mod model;
+mod parse_source;
 mod pest_ast_builder;
 mod scanner_primitives;
 mod spans_errors;

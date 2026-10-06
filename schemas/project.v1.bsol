@@ -2,7 +2,7 @@ profile "project.v1" {
   rule "root" {
     scope = top
     match = free_ident
-    except = [target, dependency, link, workspace, member, override, registry, project]
+    except = [target, dependency, link, glue, workspace, member, override, registry, project]
     label = forbidden
     cardinality = one
     extras = true
@@ -101,5 +101,14 @@ profile "project.v1" {
     field "libraries" { type = list required = false }
     field "searchPaths" { type = list required = false }
     field "extraArgs" { type = list required = false }
+  }
+  rule "glue" {
+    scope = top
+    match = keyword
+    keyword = glue
+    label = required
+    cardinality = many
+    field "backend" { type = enum_or_quoted values = [rust, dotnet] required = true }
+    field "path" { type = quoted required = true }
   }
 }

@@ -121,11 +121,12 @@ pub(super) fn value_as_string(value: &BsolValue) -> Result<String, BsolError> {
     match value {
         BsolValue::QuotedString(q) => Ok(q.value.clone()),
         BsolValue::Ident(i) => Ok(i.clone()),
+        BsolValue::Number(n) => Ok(n.raw.clone()),
         BsolValue::Bool(b) => Ok(b.to_string()),
         BsolValue::Ref(r) => Ok(r.display()),
-        BsolValue::BracketList(_) | BsolValue::InlineMap(_) => Err(BsolError::Schema(
-            "expected string, found structured value".into(),
-        )),
+        BsolValue::BracketList(_) | BsolValue::InlineMap(_) | BsolValue::InlineBlock(_) => Err(
+            BsolError::Schema("expected string, found structured value".into()),
+        ),
     }
 }
 
@@ -138,6 +139,7 @@ fn value_as_list(value: &BsolValue) -> Result<Vec<String>, BsolError> {
         match item {
             BsolListItem::QuotedString(q) => out.push(q.value.clone()),
             BsolListItem::Ident(i) => out.push(i.clone()),
+            BsolListItem::Number(n) => out.push(n.raw.clone()),
             BsolListItem::Default => out.push("default".to_string()),
             BsolListItem::Bool(b) => out.push(b.to_string()),
             BsolListItem::Ref(r) => out.push(r.display()),

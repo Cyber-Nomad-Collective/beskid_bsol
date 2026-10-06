@@ -12,7 +12,7 @@
 (string) @string
 (schemaless_text) @string
 (bool_literal) @boolean
-(decimal_unsigned) @number
+(number) @number
 (type_expression) @type
 (ref_literal) @variable.special
 (identifier) @variable

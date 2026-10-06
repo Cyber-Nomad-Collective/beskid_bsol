@@ -28,30 +28,17 @@ pub(super) fn apply_string_constraints(
     constraints: &bsol_schema::FieldConstraints,
     value: &ValidatedValue,
     span: bsol_syntax::BsolSpan,
+    context: &mut super::context::ValidationContext<'_>,
 ) -> Result<(), BsolError> {
     let Some(text) = value.as_string() else {
         return Ok(());
     };
     if let Some(pattern) = &constraints.pattern {
-        if !simple_pattern_match(pattern, &text) {
-            return Err(BsolError::schema_at(
-                span,
-                format!("value `{text}` does not match pattern `{pattern}`"),
-            ));
+        let matched = super::pattern::matches(pattern, &text, &mut context.patterns)
+            .map_err(|code| BsolError::schema_at(span, code))?;
+        if !matched {
+            return Err(BsolError::schema_at(span, "PatternMismatch"));
         }
     }
     Ok(())
-}
-
-fn simple_pattern_match(pattern: &str, text: &str) -> bool {
-    if pattern.starts_with('^') && pattern.ends_with('$') {
-        let inner = &pattern[1..pattern.len().saturating_sub(1)];
-        if inner.contains("[0-9]") {
-            return !text.is_empty()
-                && text
-                    .chars()
-                    .all(|c| c.is_ascii_digit() || c == '.' || c == '-');
-        }
-    }
-    text.contains(pattern.trim_matches('^').trim_matches('$'))
 }

@@ -1,0 +1,9 @@
+profile "reference-nested.v2" { version = 2
+ rule "config" { match = keyword keyword = config label = forbidden cardinality = one
+ field "many" { type = list[ref(item)] required = true }
+ field "named" { type = map[ident,ref(item)] required = true }
+ field "inside" { type = inline(holder) required = true }
+ }
+ rule "holder" { match = keyword keyword = holder label = forbidden cardinality = many field "target" { type = ref(item) required = true } }
+ rule "item" { match = keyword keyword = item label = required cardinality = many }
+}

@@ -4,10 +4,10 @@ pub use bsol_analysis::{
     analyze_with_profile, apply_migration, load_fetched_profile, load_profile_text,
     migrate_document, parse_pckg_shorthand, plan_migration, profile_base_dir,
     resolve_active_profile, resolve_profile, resolve_references, validate,
-    validate_profile_document, validate_with, AnalysisOptions, AnalysisSession, BsolError,
-    CompositeSchemaSource, FileSchemaSource, MigrationPlan, MigrationRoute, SchemaCollection,
-    SchemaSource, ValidatedBlock, ValidatedBlockLite, ValidatedDocument, ValidatedValue,
-    ValidatorRegistry,
+    validate_profile_document, validate_with, validate_with_pattern_limits, AnalysisOptions,
+    AnalysisSession, BsolError, CompositeSchemaSource, MigrationPlan,
+    MigrationRoute, PatternLimits, SchemaCollection, SchemaSource, ValidatedBlock,
+    ValidatedBlockLite, ValidatedDocument, ValidatedValue, ValidatorRegistry,
 };
 pub use bsol_schema::{
     compose_profile, load_profile, load_profile_from_document, load_profile_from_path,
@@ -17,7 +17,8 @@ pub use bsol_schema::{
     SchemaProfile, ValueType, VariantRule,
 };
 pub use bsol_syntax::{
-    parse_bsol_document, parse_document, BsolAssignment, BsolAttribute, BsolAttributeArg,
-    BsolBlock, BsolBracketList, BsolDocument, BsolInlineMap, BsolItem, BsolListItem, BsolMapEntry,
-    BsolParser, BsolQuotedString, BsolRef, BsolSpan, BsolValue, Rule,
+    parse_bsol_document, parse_document, write_bsol_document, write_bsol_value, BsolAssignment,
+    BsolAttribute, BsolAttributeArg, BsolBlock, BsolBracketList, BsolDocument, BsolInlineMap,
+    BsolItem, BsolListItem, BsolMapEntry, BsolNumber, BsolParser, BsolQuotedString, BsolRef,
+    BsolSpan, BsolValue, Rule,
 };

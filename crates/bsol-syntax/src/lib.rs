@@ -4,11 +4,13 @@ mod ast;
 mod build;
 mod error;
 mod parser;
+mod write;
+pub use write::{write_bsol_document, write_bsol_value};
 
 pub use ast::{
     BsolAssignment, BsolAttribute, BsolAttributeArg, BsolBlock, BsolBracketList, BsolDocument,
-    BsolInlineMap, BsolItem, BsolListItem, BsolMapEntry, BsolQuotedString, BsolRef, BsolSpan,
-    BsolValue,
+    BsolInlineMap, BsolItem, BsolListItem, BsolMapEntry, BsolNumber, BsolQuotedString, BsolRef,
+    BsolSpan, BsolValue,
 };
 pub use build::parse_bsol_document;
 pub use error::BsolError;

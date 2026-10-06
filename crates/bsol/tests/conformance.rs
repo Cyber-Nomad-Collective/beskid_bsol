@@ -101,3 +101,57 @@ fn duplicate_field_keys_are_rejected() {
     let profile = load_profile("project.v1").expect("profile");
     assert!(validate(&doc, &profile).is_err());
 }
+
+const GLUE_PROJECT_HEADER: &str = r#"demo {
+  name = "demo"
+  version = "0.1.0"
+}
+target "lib" {
+  kind = Lib
+}
+"#;
+
+fn validate_glue_project(profile_name: &str, glue: &str) -> Result<bsol::ValidatedDocument, bsol::BsolError> {
+    let src = format!("{GLUE_PROJECT_HEADER}{glue}");
+    let doc = parse_bsol_document(&src).expect("parse");
+    let profile = load_profile(profile_name).expect("profile");
+    validate(&doc, &profile)
+}
+
+#[test]
+fn project_profiles_accept_glue_owner_blocks() {
+    for profile in ["project.v1", "project.v2"] {
+        let validated = validate_glue_project(
+            profile,
+            "glue \"glue_manual\" {\n  backend = rust\n  path = \"rust\"\n}\nglue \"other\" {\n  backend = rust\n  path = \"other\"\n}\n",
+        )
+        .unwrap_or_else(|e| panic!("{profile}: {e}"));
+        let glue: Vec<_> = validated.blocks.iter().filter(|block| block.rule_id == "glue").collect();
+        assert_eq!(glue.len(), 2, "{profile}");
+        assert_eq!(glue[0].label.as_deref(), Some("glue_manual"));
+        assert_eq!(glue[0].fields.get("backend").map(String::as_str), Some("rust"));
+        assert_eq!(glue[0].fields.get("path").map(String::as_str), Some("rust"));
+    }
+}
+
+#[test]
+fn project_profiles_reject_malformed_glue_owner_blocks() {
+    for profile in ["project.v1", "project.v2"] {
+        for glue in [
+            // unknown key (tool paths are not manifest keys)
+            "glue \"g\" {\n  backend = rust\n  path = \"rust\"\n  cargo = \"/usr/bin/cargo\"\n}\n",
+            // missing label
+            "glue {\n  backend = rust\n  path = \"rust\"\n}\n",
+            // missing backend
+            "glue \"g\" {\n  path = \"rust\"\n}\n",
+            // missing path
+            "glue \"g\" {\n  backend = rust\n}\n",
+            // backend outside the closed enum
+            "glue \"g\" {\n  backend = python\n  path = \"rust\"\n}\n",
+            // unquoted path
+            "glue \"g\" {\n  backend = rust\n  path = rust\n}\n",
+        ] {
+            assert!(validate_glue_project(profile, glue).is_err(), "{profile} accepted:\n{glue}");
+        }
+    }
+}

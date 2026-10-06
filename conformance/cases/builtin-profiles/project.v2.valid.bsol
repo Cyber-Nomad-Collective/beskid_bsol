@@ -1,0 +1,1 @@
+Example { name = "Example" version = "0.6.0" } target "app" { kind = App entry = "Main" } dependency "local" { source = path path = "../local" }

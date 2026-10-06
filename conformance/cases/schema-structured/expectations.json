@@ -1,0 +1,75 @@
+{
+  "acceptance": "BSOL-06-03/04",
+  "profile": "structured.v2",
+  "profileSha256": "72a0667ca613985d2348004fa2a1d1a86ecf656c06a1e10da8378e4c6a0f84f9",
+  "cases": [
+    {
+      "id": "valid",
+      "valid": true,
+      "inputSha256": "611c2b898765fa6e93a993e53bab87813aae0724da4148554c7e6660c5c55e7e"
+    },
+    {
+      "id": "bad-list",
+      "valid": false,
+      "code": "TypeMismatch",
+      "field": "items",
+      "inputSha256": "41d6b25ef9f7f5197547af320155ec3561ae6a809fb5824b68bfcc164fa2c66b"
+    },
+    {
+      "id": "bad-map",
+      "valid": false,
+      "code": "TypeMismatch",
+      "field": "scores",
+      "inputSha256": "26e01a3e1b1c9d0b92a9166c7ff82d01350bc09a554e1e540269c60779877082"
+    },
+    {
+      "id": "bad-inline",
+      "valid": false,
+      "code": "TypeMismatch",
+      "field": "name",
+      "inputSha256": "f8b1e0f04381b48ea5df3086f75fb7ecfe80abdceab37cbecb8675c343b16212"
+    },
+    {
+      "id": "bad-ref-kind",
+      "valid": false,
+      "code": "TypeMismatch",
+      "field": "target",
+      "inputSha256": "745eaef612681bd3c6059959e2110d4db09b10b31286903ae8687758b925f596"
+    },
+    {
+      "id": "bad-block-attr",
+      "valid": false,
+      "code": "UnknownAttribute",
+      "field": "",
+      "inputSha256": "8744f4df5fcf49e82c7a72f724921caba46fae2bae46977b466b1d6ededdbfdb"
+    },
+    {
+      "id": "bad-field-attr",
+      "valid": false,
+      "code": "UnknownAttribute",
+      "field": "title",
+      "inputSha256": "708430e3ea6378bb6c41a135057e12e1aaa2d92f3334338445804024c285aed2"
+    },
+    {
+      "id": "bad-type",
+      "validProfile": false,
+      "code": "UnknownFieldType",
+      "field": "items",
+      "inputSha256": "fdac63b6232c0f11a40d387e6f003a0f33730ae2ffe4bd86f2935c334a59260a"
+    },
+    {
+      "id": "bad-empty-block-attr",
+      "valid": false,
+      "code": "UnknownAttribute",
+      "field": "",
+      "inputSha256": "f7716042c4cb551c70d3c1c3101cbe1cc316c21eec2a6c98f1647ae1cbc401b8"
+    },
+    {
+      "id": "bad-empty-field-attr",
+      "valid": false,
+      "code": "UnknownAttribute",
+      "field": "items",
+      "inputSha256": "5ba9fe43ae3ee5a193c063e1cd52e1a6271817659a66dc498ca475273a4f81cb"
+    }
+  ]
+}

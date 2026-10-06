@@ -1,0 +1,5 @@
+profile "nested.v2" { version = 2
+ rule "left" { keyword = left nested "entry" { keyword = entry field "value" { type = quoted } } }
+ rule "right" { keyword = right nested "entry" { keyword = entry field "value" { type = quoted } } }
+ rule "leaf" { keyword = leaf mixes = [left,right] }
+}

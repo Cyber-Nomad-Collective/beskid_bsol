@@ -1,0 +1,97 @@
+{
+  "files": {
+    "diamond-profile.bsol": {
+      "sha256": "7334b3cc91abed9d7109cff5a2f7078d3d016ba57ffae9861f4ee989e546d6ec"
+    },
+    "diamond-valid.bsol": {
+      "sha256": "ac7c4d015e998f05ed9c0c5b128d4b415b5d98f4d84f8cf6d90b00d784676ed7"
+    },
+    "cycle-profile.bsol": {
+      "sha256": "d3086f7e96df8f969ae198ea56e0f964ee4057a8649d46bd19e4115ef6643296"
+    },
+    "unknown-base-profile.bsol": {
+      "sha256": "7495b31c9725202939f8b4c44b96f180eb738f93106e323594d0f1dd5a0d70f7"
+    },
+    "conflict-profile.bsol": {
+      "sha256": "e42a853526c30a69fbc46da5043b3e37a273e2b05b09bff8cd69f9cfc29c0bd7"
+    },
+    "label-conflict-profile.bsol": {
+      "sha256": "068f84591779f270bbf8f4563996728db7cd1a0f664f29f1b114262a22d395b6"
+    },
+    "reference-profile.bsol": {
+      "sha256": "78a264d18328b18b9b07ae084e498068960925599fe84bd7f0df0a7a3584ab65"
+    },
+    "reference-valid.bsol": {
+      "sha256": "a98a716665cf18789933d33cb918247d509ad0a326f39c93a1a0bd3bb73f2ee9"
+    },
+    "reference-cycle.bsol": {
+      "sha256": "1cb61481b3b88500f728b49da23e31b9ba8ca918b2f2eede4b927ff209a7bc49"
+    },
+    "reference-missing.bsol": {
+      "sha256": "493591a48a51e186b2f7a5ba8eff16d0e4d7c0cb0e3f771c1439b8320c96141e"
+    },
+    "reference-duplicate.bsol": {
+      "sha256": "de5ef2e89e2677595203883dc466bb298d6ee617cb4d41d2b97026f86f887268"
+    },
+    "reference-ambiguous.bsol": {
+      "sha256": "2ed7f72a7252317495a5a1cd126f9eb8b285ea4bf573e96064bcada43fddda5b"
+    },
+    "refinement-profile.bsol": {
+      "sha256": "b01177cde416960c1ce638ca1c3369dfb16021deb5530fc63ccdcc4a12d724f6"
+    },
+    "constraint-conflict-profile.bsol": {
+      "sha256": "0bbe9b3e83d1078a60a8fc1792b933f967d2e64d71a8e6258161b6515b96b549"
+    },
+    "reference-nested-profile.bsol": {
+      "sha256": "825326a6c5fb4506183d5b4f805a26cfa7e14449507c8dcc964b40c732f28eb8"
+    },
+    "reference-nested-valid.bsol": {
+      "sha256": "3edce60faa65a3521a3d1ade7ad8c6671a50eda3a5bdd40833fdd60ddb7a8a58"
+    },
+    "reference-nested-missing.bsol": {
+      "sha256": "65a08d4ff7b4bb3c345a094076f6706134f2591e7b729533eb43a84bdbe4b45f"
+    },
+    "reference-wrong-kind.bsol": {
+      "sha256": "f19c6ff51058f939b7666b1099450215f6564747036d57cf26a1d47c398f95e6"
+    },
+    "default-reference-profile.bsol": {
+      "sha256": "cdb5d31dc237c5a1ea2ae016aa17d8fcbd6db45777fccd26e42b5747e4c41eda"
+    },
+    "default-reference-valid.bsol": {
+      "sha256": "60deb35d19218fe4a63114a2a7d23a9b068ec3cb966c4c4bdcaa1ede2f5645be"
+    },
+    "default-reference-missing.bsol": {
+      "sha256": "344b9d831e22dd60cda46f07dbf38e75ae2cbc7698967cf2d8c298ae6407ecdf"
+    },
+    "alias-reference-profile.bsol": {
+      "sha256": "945098dd803f10526dd6a54d3e4a5b645cdef5c23c8f83a5919440002df8a1d5"
+    },
+    "alias-reference-kind.bsol": {
+      "sha256": "8d43404442708a7b2533b1bc824933b1eb5348e4e18d49bbe5532117db2597a6"
+    },
+    "alias-reference-rule.bsol": {
+      "sha256": "160f71b7a13e18377e02a5732bcb898bca37d5c122b7b7a5209cc7e7af5b8bdd"
+    }
+  },
+  "cases": {
+    "diamond": "one inherited name and local count; related spans retained",
+    "cycle-profile": "CompositionCycle",
+    "unknown-base-profile": "UnknownBaseRule",
+    "conflict-profile": "CompositionConflict",
+    "label-conflict-profile": "CompositionConflict",
+    "reference-valid": "one resolved document node link",
+    "reference-cycle": "two syntax links, no owned expansion",
+    "reference-missing": "UnresolvedReference",
+    "reference-duplicate": "DuplicateReferenceTarget",
+    "reference-ambiguous": "AmbiguousReference",
+    "refinement-profile": "narrower inclusive bounds accepted",
+    "constraint-conflict-profile": "CompositionConflict",
+    "reference-nested-valid": "four checked syntax reference links including inline",
+    "reference-nested-missing": "UnresolvedReference",
+    "reference-wrong-kind": "TypeMismatch",
+    "default-reference-valid": "DefaultNode checked ownerFieldBinding/profileNode; target input-owned",
+    "default-reference-missing": "UnresolvedReference in checked default sourceDocument",
+    "alias-reference-kind": "actual kind resolves same canonical RuleBinding",
+    "alias-reference-rule": "rule alias resolves same target, not duplicate candidate"
+  }
+}

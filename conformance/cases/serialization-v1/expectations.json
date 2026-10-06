@@ -1,0 +1,66 @@
+{
+  "representation": "serialization.v1",
+  "note": "Fixture descriptors test format policy only; these signatures do not grant compiler serialization eligibility.",
+  "cases": [
+    {
+      "name": "u64",
+      "signature": "unsigned64",
+      "shape": "c698c406462c3de4dc5529fb2e5a3f0830573b0a3ebee968cecaa06573513298",
+      "result": "ok"
+    },
+    {
+      "name": "wrong-width",
+      "signature": "unsigned64",
+      "shape": "c698c406462c3de4dc5529fb2e5a3f0830573b0a3ebee968cecaa06573513298",
+      "result": "ShapeMismatch"
+    },
+    {
+      "name": "negative-zero",
+      "signature": "float64",
+      "shape": "6bd2a66c4467bc379fd21e11d74bfa2b0f8205baf39eefc20b2c4fecb198dd48",
+      "result": "ok"
+    },
+    {
+      "name": "char-astral",
+      "signature": "char",
+      "shape": "411b0496da5eeced5314a3b5e9532bac97008d09ce9969ab4fa6a52b8c7ef634",
+      "result": "ok"
+    },
+    {
+      "name": "char-two",
+      "signature": "char",
+      "shape": "411b0496da5eeced5314a3b5e9532bac97008d09ce9969ab4fa6a52b8c7ef634",
+      "result": "InvalidScalar"
+    },
+    {
+      "name": "bytes",
+      "signature": "bytes",
+      "shape": "277089d91c0bdf4f2e6862ba7e4a07605119431f5d13f726dd352b06f1b206a9",
+      "result": "ok"
+    },
+    {
+      "name": "bad-padbits",
+      "signature": "bytes",
+      "shape": "277089d91c0bdf4f2e6862ba7e4a07605119431f5d13f726dd352b06f1b206a9",
+      "result": "InvalidBase64"
+    },
+    {
+      "name": "duplicate-string",
+      "signature": "string",
+      "shape": "473287f8298dba7163a897908958f7c0eae733e25d2e027992ea2edc9bed2fa8",
+      "result": "DuplicateField"
+    },
+    {
+      "name": "malformed-field",
+      "signature": "string",
+      "shape": "473287f8298dba7163a897908958f7c0eae733e25d2e027992ea2edc9bed2fa8",
+      "result": "UnknownField"
+    },
+    {
+      "name": "unknown-string",
+      "signature": "string",
+      "shape": "473287f8298dba7163a897908958f7c0eae733e25d2e027992ea2edc9bed2fa8",
+      "result": "UnknownField"
+    }
+  ]
+}

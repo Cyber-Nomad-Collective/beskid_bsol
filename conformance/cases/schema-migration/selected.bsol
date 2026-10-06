@@ -1,0 +1,3 @@
+// old_name = "old" is a comment, never a rewrite target.
+config { old_name = "old" }
+other { text = "old_name = old" }

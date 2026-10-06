@@ -1,0 +1,2 @@
+config { target = @item_rule/one }
+node "one" {}

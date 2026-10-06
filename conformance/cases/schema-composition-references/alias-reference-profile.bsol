@@ -1,0 +1,4 @@
+profile "alias-reference.v2" { version = 2
+ rule "config" { match = keyword keyword = config label = forbidden cardinality = one field "target" { type = ref(item_rule) required = true } }
+ rule "item_rule" { match = keyword keyword = node label = required cardinality = many }
+}

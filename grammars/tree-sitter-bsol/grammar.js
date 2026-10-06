@@ -40,16 +40,17 @@ module.exports = grammar({
 		value: ($) =>
 			choice(
 				$.inline_map,
+				$.inline_block,
 				$.ref_literal,
 				$.bool_literal,
 				$.list,
 				$.string,
 				$.type_expression,
 				$.identifier,
-				$.decimal_unsigned,
+				$.number,
 			),
 
-		inline_map: ($) => seq("{", $.map_entry, repeat(seq(",", $.map_entry)), optional(","), "}"),
+		inline_map: ($) => seq("{", optional(seq($.map_entry, repeat(seq(",", $.map_entry)), optional(","))), "}"),
 
 		map_entry: ($) => seq($.identifier, "=", $.value),
 
@@ -67,6 +68,7 @@ module.exports = grammar({
 				$.ref_literal,
 				$.bool_literal,
 				$.inline_block,
+				$.number,
 				"default",
 				$.string,
 				$.identifier,
@@ -89,9 +91,9 @@ module.exports = grammar({
 
 		identifier: (_$) => /[A-Za-z_][A-Za-z0-9_]*/,
 
-		decimal_unsigned: (_$) => /[0-9]+/,
+		number: (_$) => /-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/,
 
-		string: (_$) => /"[^"]*"/,
+		string: (_$) => /"([^"\\\x00-\x1f]|\\["\\nrtbf]|\\u[0-9A-Fa-f]{4})*"/,
 
 		comment: (_$) => token(choice(seq("//", /.*/), seq("#", /.*/))),
 	},

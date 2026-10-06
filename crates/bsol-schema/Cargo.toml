@@ -11,6 +11,8 @@ categories = ["config"]
 [dependencies]
 bsol-syntax = { workspace = true }
 thiserror = { workspace = true }
+pest = { workspace = true }
+pest_derive = { workspace = true }
 
 [lints]
 workspace = true

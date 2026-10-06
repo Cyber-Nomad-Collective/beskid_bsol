@@ -1,0 +1,16 @@
+profile "structured.v2" {
+  version = 2
+  rule "config" {
+    scope = top match = keyword keyword = config label = forbidden cardinality = one
+    allowed_attrs = [Root]
+    field "title" { type = quoted required = true allowed_attrs = [Secret] }
+    field "items" { type = list[quoted|u32] required = true }
+    field "scores" { type = map[ident,u32] required = true }
+    field "embedded" { type = inline(item) required = true }
+    field "target" { type = ref(item) required = true }
+  }
+  rule "item" {
+    scope = top match = keyword keyword = item label = required cardinality = many
+    field "name" { type = quoted required = true }
+  }
+}

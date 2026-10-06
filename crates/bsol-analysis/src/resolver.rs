@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use bsol_schema::{
-    load_profile_from_path, load_profile_from_source, BsolError, ImportSchemaSpec, ImportSource,
+    load_profile_from_source, BsolError, ImportSchemaSpec,
     SchemaProfile,
 };
 
@@ -12,29 +12,6 @@ use bsol_schema::{
 pub trait SchemaSource: Send + Sync {
     fn resolve(&self, spec: &ImportSchemaSpec, base_dir: &Path)
         -> Result<SchemaProfile, BsolError>;
-}
-
-/// Resolves schemas from the local filesystem only.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct FileSchemaSource;
-
-impl SchemaSource for FileSchemaSource {
-    fn resolve(
-        &self,
-        spec: &ImportSchemaSpec,
-        base_dir: &Path,
-    ) -> Result<SchemaProfile, BsolError> {
-        match &spec.from {
-            ImportSource::File { path } => {
-                let resolved = base_dir.join(path);
-                load_profile_from_path(&resolved)
-            }
-            other => Err(BsolError::Import(format!(
-                "file resolver cannot resolve `{other:?}` for `{}`",
-                spec.name
-            ))),
-        }
-    }
 }
 
 /// Aggregated schema profiles keyed by logical name.
@@ -135,10 +112,6 @@ pub struct CompositeSchemaSource {
 impl CompositeSchemaSource {
     pub fn new(sources: Vec<Box<dyn SchemaSource>>) -> Self {
         Self { sources }
-    }
-
-    pub fn file_only() -> Self {
-        Self::new(vec![Box::new(FileSchemaSource)])
     }
 
     pub fn add_source(&mut self, source: Box<dyn SchemaSource>) {

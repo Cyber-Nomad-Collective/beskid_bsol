@@ -25,7 +25,7 @@ pub(super) fn require_ident(assignment: &BsolAssignment) -> Result<String, BsolE
 
 pub(super) fn require_u32(assignment: &BsolAssignment) -> Result<String, BsolError> {
     match &assignment.value {
-        BsolValue::Ident(text) if text.chars().all(|c| c.is_ascii_digit()) => Ok(text.clone()),
+        BsolValue::Number(n) if n.raw.parse::<u32>().is_ok() => Ok(n.raw.clone()),
         other => Err(BsolError::schema_at(
             assignment.span,
             format!("expected positive integer, found `{}`", other.preview()),
@@ -35,7 +35,7 @@ pub(super) fn require_u32(assignment: &BsolAssignment) -> Result<String, BsolErr
 
 pub(super) fn require_i64(assignment: &BsolAssignment) -> Result<String, BsolError> {
     match &assignment.value {
-        BsolValue::Ident(text) if text.parse::<i64>().is_ok() => Ok(text.clone()),
+        BsolValue::Number(n) if n.raw.parse::<i64>().is_ok() => Ok(n.raw.clone()),
         other => Err(BsolError::schema_at(
             assignment.span,
             format!("expected integer, found `{}`", other.preview()),
@@ -45,7 +45,7 @@ pub(super) fn require_i64(assignment: &BsolAssignment) -> Result<String, BsolErr
 
 pub(super) fn require_f64(assignment: &BsolAssignment) -> Result<String, BsolError> {
     match &assignment.value {
-        BsolValue::Ident(text) if text.parse::<f64>().is_ok() => Ok(text.clone()),
+        BsolValue::Number(n) if n.raw.parse::<f64>().is_ok_and(f64::is_finite) => Ok(n.raw.clone()),
         other => Err(BsolError::schema_at(
             assignment.span,
             format!("expected float, found `{}`", other.preview()),
@@ -98,6 +98,7 @@ pub(super) fn require_inline_map(assignment: &BsolAssignment) -> Result<BsolInli
 
 pub(super) fn require_inline_block(assignment: &BsolAssignment) -> Result<BsolBlock, BsolError> {
     match &assignment.value {
+        BsolValue::InlineBlock(block) => Ok(block.clone()),
         BsolValue::BracketList(list) => {
             if let Some(BsolListItem::InlineBlock(block)) = list.items.first() {
                 return Ok(block.clone());
@@ -127,6 +128,7 @@ pub(super) fn require_list_strings(assignment: &BsolAssignment) -> Result<Vec<St
             BsolListItem::Default => "default".to_string(),
             BsolListItem::QuotedString(q) => q.value.clone(),
             BsolListItem::Ident(i) => i.clone(),
+            BsolListItem::Number(n) => n.raw.clone(),
             BsolListItem::Bool(b) => b.to_string(),
             BsolListItem::Ref(r) => r.display(),
             BsolListItem::InlineMap(_) | BsolListItem::InlineBlock(_) => {

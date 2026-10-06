@@ -65,7 +65,7 @@ impl AnalysisSession {
         Self {
             observer: Box::new(NullObserver),
             registry: ValidatorRegistry::default(),
-            source: CompositeSchemaSource::file_only(),
+            source: CompositeSchemaSource::new(Vec::new()),
         }
     }
 

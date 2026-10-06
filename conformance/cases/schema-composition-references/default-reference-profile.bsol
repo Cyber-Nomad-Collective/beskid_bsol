@@ -1,0 +1,4 @@
+profile "default-reference.v2" { version = 2
+ rule "config" { match = keyword keyword = config label = forbidden cardinality = one field "target" { type = ref(item) default = @item/one } }
+ rule "item" { match = keyword keyword = item label = required cardinality = many }
+}

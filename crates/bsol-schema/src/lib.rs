@@ -3,6 +3,7 @@
 mod compose;
 mod error;
 mod load;
+pub mod pattern;
 
 pub use compose::{compose_profile, merge_profiles};
 pub use error::BsolError;
@@ -150,7 +151,8 @@ pub enum Cardinality {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldConstraints {
-    pub default_value: Option<String>,
+    /// Original typed default assignment, including its profile source span.
+    pub default_value: Option<bsol_syntax::BsolAssignment>,
     pub min: Option<i64>,
     pub max: Option<i64>,
     pub pattern: Option<String>,

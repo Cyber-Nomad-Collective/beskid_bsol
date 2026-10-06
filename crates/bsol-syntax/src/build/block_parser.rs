@@ -1,3 +1,4 @@
+use super::parse_source::ParseSource;
 use pest::Parser;
 
 use crate::error::BsolError;
@@ -13,6 +14,8 @@ use super::spans_errors::{pest_error_with_offset, span_at};
 
 /// Parse Bsol source into the generic document AST.
 pub fn parse_bsol_document(source: &str) -> Result<BsolDocument, BsolError> {
+    let context = ParseSource::new(source);
+    let source = &context;
     let mut blocks = Vec::new();
     let mut cursor = 0usize;
     while cursor < source.len() {
@@ -27,7 +30,10 @@ pub fn parse_bsol_document(source: &str) -> Result<BsolDocument, BsolError> {
     Ok(BsolDocument { blocks })
 }
 
-fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), BsolError> {
+pub(super) fn parse_block_at(
+    source: &ParseSource<'_>,
+    start: usize,
+) -> Result<(BsolBlock, usize), BsolError> {
     let mut cursor = start;
     skip_ws_and_comments(source, &mut cursor);
     let block_start = cursor;
@@ -50,9 +56,10 @@ fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), Bsol
                 "expected quoted block label",
             )
         })?;
+        let label_end = cursor;
         skip_ws_and_comments(source, &mut cursor);
         Some(BsolQuotedString {
-            span: span_at(source, label_start, cursor),
+            span: span_at(source, label_start, label_end),
             value,
         })
     } else {
@@ -111,7 +118,7 @@ fn parse_block_at(source: &str, start: usize) -> Result<(BsolBlock, usize), Bsol
 }
 
 fn parse_block_items_in_range(
-    source: &str,
+    source: &ParseSource<'_>,
     start: usize,
     end: usize,
 ) -> Result<Vec<BsolItem>, BsolError> {
@@ -129,7 +136,10 @@ fn parse_block_items_in_range(
             // attribute-only prefix already consumed; continue
         }
         let Some(_kind) = read_ident(source, &mut cursor) else {
-            break;
+            return Err(BsolError::parse_at(
+                span_at(source, cursor, end),
+                "unexpected block item",
+            ));
         };
         skip_ws_and_comments(source, &mut cursor);
         if source.as_bytes().get(cursor) == Some(&b'=') {
@@ -154,7 +164,7 @@ fn parse_block_items_in_range(
 }
 
 fn parse_assignment_slice(
-    source: &str,
+    source: &ParseSource<'_>,
     item_start: usize,
     item_end: usize,
     attrs: Vec<BsolAttribute>,
