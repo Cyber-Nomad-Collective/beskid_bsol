@@ -17,6 +17,7 @@ bsol-pipeline = { workspace = true }
 bsol-schema = { workspace = true }
 bsol-syntax = { workspace = true }
 thiserror = { workspace = true }
+sha2 = "0.10"
 
 [lints]
 workspace = true

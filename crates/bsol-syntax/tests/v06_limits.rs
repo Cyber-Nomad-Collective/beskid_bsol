@@ -225,3 +225,81 @@ fn default_scalar_limit_is_exact() {
             && error.to_string().contains("decoded string byte limit")
     );
 }
+
+fn write_rejects(source: &str, limits: &BsolLimits, kind: BsolLimitKind) {
+    let document = parse_bsol_document(source).expect("source parses under defaults");
+    let error = bsol_syntax::write_bsol_document_with_limits(&document, limits)
+        .expect_err(&format!("{kind} rejects writing {source:?}"));
+    assert_eq!(error.limit_kind(), Some(kind), "{error}");
+    let BsolError::Limit { message, .. } = &error else {
+        unreachable!()
+    };
+    assert_eq!(*message, "invalid or over-limit syntax graph", "{error}");
+}
+
+fn written(source: &str, limits: &BsolLimits) -> String {
+    let document = parse_bsol_document(source).expect("source parses under defaults");
+    bsol_syntax::write_bsol_document_with_limits(&document, limits)
+        .unwrap_or_else(|error| panic!("{source:?} writes within budget: {error}"))
+}
+
+#[test]
+fn writer_output_budget_is_exact() {
+    let output = written("a { }", &BsolLimits::default());
+    assert_eq!(output, "a {\n}\n");
+    assert_eq!(
+        written("a { }", &limits(|l| l.max_output_bytes = output.len())),
+        output
+    );
+    write_rejects(
+        "a { }",
+        &limits(|l| l.max_output_bytes = output.len() - 1),
+        BsolLimitKind::OutputLimit,
+    );
+    // The output budget is independent of the input budget.
+    let tiny_input = limits(|l| l.max_input_bytes = 1);
+    assert_eq!(written("a { }", &tiny_input), output);
+}
+
+#[test]
+fn writer_graph_budgets_report_invalid_syntax() {
+    // root block 1, assignment 2, list 3, number 4
+    let source = "a { b = [1] }";
+    written(source, &limits(|l| l.max_depth = 4));
+    write_rejects(
+        source,
+        &limits(|l| l.max_depth = 3),
+        BsolLimitKind::InvalidSyntax,
+    );
+    written(source, &limits(|l| l.max_nodes = 4));
+    write_rejects(
+        source,
+        &limits(|l| l.max_nodes = 3),
+        BsolLimitKind::InvalidSyntax,
+    );
+    written("abc { }", &limits(|l| l.max_scalar_bytes = 3));
+    write_rejects(
+        "abcd { }",
+        &limits(|l| l.max_scalar_bytes = 3),
+        BsolLimitKind::InvalidSyntax,
+    );
+    write_rejects(
+        r#"a { b = "abcd" }"#,
+        &limits(|l| l.max_scalar_bytes = 3),
+        BsolLimitKind::InvalidSyntax,
+    );
+}
+
+#[test]
+fn writer_reports_the_first_failure_in_emission_order() {
+    // `first {\n}\n` is 10 bytes, then the over-limit kind of the second block.
+    let source = "first { } abcdefgh { }";
+    let both = |output: usize| {
+        limits(|l| {
+            l.max_scalar_bytes = 7;
+            l.max_output_bytes = output;
+        })
+    };
+    write_rejects(source, &both(5), BsolLimitKind::OutputLimit);
+    write_rejects(source, &both(64), BsolLimitKind::InvalidSyntax);
+}

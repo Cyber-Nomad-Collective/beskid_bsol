@@ -1,6 +1,6 @@
 //! Offline, digest-bound schema bytes. Parsing belongs to the consumer.
+use bsol_analysis::MaterializedSchema;
 use cap_std::{ambient_authority, fs::Dir};
-use sha2::{Digest, Sha256};
 use std::{collections::HashMap, io::Read, path::Path};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize)]
@@ -114,12 +114,33 @@ fn invalid(message: &str) -> MaterializationError {
     MaterializationError::InvalidRequest(message.into())
 }
 
+impl MaterializationError {
+    /// Stable host failure code carried into the import graph failure.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidRequest(_) => "InvalidImportRequest",
+            Self::MissingLock => "MissingImportLock",
+            Self::ConflictingLock => "ConflictingImportLock",
+            Self::Limit => "LimitExceeded",
+            Self::Utf8 => "InvalidImportUtf8",
+            Self::DigestMismatch => "ImportDigestMismatch",
+            Self::Io(_) => "MaterializationIo",
+        }
+    }
+}
+
+impl From<MaterializationError> for bsol_analysis::ImportFailure {
+    fn from(error: MaterializationError) -> Self {
+        Self::new(error.code(), error.to_string())
+    }
+}
+
 impl bsol_analysis::SchemaSource for LockedSchemaHost {
-    fn resolve(
+    fn materialize(
         &self,
         spec: &bsol_schema::ImportSchemaSpec,
         _base_dir: &Path,
-    ) -> Result<bsol_schema::SchemaProfile, bsol_schema::BsolError> {
+    ) -> Result<MaterializedSchema, bsol_analysis::ImportFailure> {
         use bsol_schema::ImportSource;
         let request = match &spec.from {
             ImportSource::File { path } => SchemaImportRequest::File { path: path.clone() },
@@ -137,19 +158,9 @@ impl bsol_analysis::SchemaSource for LockedSchemaHost {
                 version: version.clone(),
                 path: path.clone(),
             },
-            ImportSource::PckgShorthand { reference } => SchemaImportRequest::pckg(reference)
-                .map_err(|error| bsol_schema::BsolError::Import(error.to_string()))?,
+            ImportSource::PckgShorthand { reference } => SchemaImportRequest::pckg(reference)?,
         };
-        let materialized = LockedSchemaHost::resolve(self, &request)
-            .map_err(|error| bsol_schema::BsolError::Import(error.to_string()))?;
-        // Bootstrap adapter only; native callers consume owned bytes above.
-        let profile = bsol_schema::load_profile_from_source(&materialized.source)?;
-        if profile.name != spec.name {
-            return Err(bsol_schema::BsolError::Import(
-                "locked source declares a different profile identity".into(),
-            ));
-        }
-        Ok(profile)
+        Ok(LockedSchemaHost::resolve(self, &request)?)
     }
 }
 
@@ -192,13 +203,6 @@ impl LockedImport {
             source_sha256,
         }
     }
-}
-
-#[derive(Debug)]
-pub struct MaterializedSchemaSource {
-    pub source: String,
-    pub canonical_identity: String,
-    pub source_sha256: [u8; 32],
 }
 
 /// One opened root capability and an immutable exact-request lock inventory.
@@ -248,13 +252,13 @@ impl LockedSchemaHost {
     }
 
     pub fn source_digest(bytes: &[u8]) -> [u8; 32] {
-        Sha256::digest(bytes).into()
+        MaterializedSchema::digest(bytes)
     }
 
     pub fn resolve(
         &self,
         request: &SchemaImportRequest,
-    ) -> Result<MaterializedSchemaSource, MaterializationError> {
+    ) -> Result<MaterializedSchema, MaterializationError> {
         request.validate()?;
         let lock = self
             .locks
@@ -276,7 +280,7 @@ impl LockedSchemaHost {
             return Err(MaterializationError::DigestMismatch);
         }
         let source = String::from_utf8(bytes).map_err(|_| MaterializationError::Utf8)?;
-        Ok(MaterializedSchemaSource {
+        Ok(MaterializedSchema {
             source,
             canonical_identity: lock.canonical_identity.clone(),
             source_sha256: digest,

@@ -1,4 +1,6 @@
-use bsol_beskid_bridge::{LockedImport, LockedSchemaHost, SchemaImportRequest};
+use bsol_analysis::resolve_import_graph;
+use bsol_beskid_bridge::{LockedImport, LockedSchemaHost, MaterializedSchema, SchemaImportRequest};
+use bsol_syntax::BsolLimits;
 use std::fs;
 
 #[test]
@@ -16,22 +18,33 @@ fn bootstrap_adapter_rejects_wrong_declared_profile_before_composition() {
         LockedSchemaHost::source_digest(source.as_bytes()),
     );
     let host = LockedSchemaHost::open(root.path(), vec![lock], 65536).unwrap();
-    let mut spec = bsol_schema::ImportSchemaSpec {
-        name: "project.v1".into(),
-        alias: Some("project".into()),
-        from: bsol_schema::ImportSource::File {
-            path: "profile.bsol".into(),
-        },
-        span: Default::default(),
+    let importing = |name: &str| {
+        MaterializedSchema::owned(
+            format!(
+                "profile \"root.v2\" {{ version = 2 import_schema \"{name}\" {{ from = file path = \"profile.bsol\" alias = project }} }}"
+            ),
+            "root".into(),
+        )
     };
+    let graph = resolve_import_graph(
+        importing("project.v1"),
+        root.path(),
+        &host,
+        &BsolLimits::default(),
+    )
+    .expect("locked import resolves");
     assert_eq!(
-        bsol_analysis::SchemaSource::resolve(&host, &spec, root.path())
-            .unwrap()
-            .name,
+        graph.sources[graph.bindings[0].target].profile,
         "project.v1"
     );
-    spec.name = "foreign-profile".into();
-    assert!(bsol_analysis::SchemaSource::resolve(&host, &spec, root.path()).is_err());
+    let error = resolve_import_graph(
+        importing("foreign-profile"),
+        root.path(),
+        &host,
+        &BsolLimits::default(),
+    )
+    .expect_err("declared identity mismatch");
+    assert_eq!(error.code, "ImportProfileMismatch");
 }
 
 #[test]

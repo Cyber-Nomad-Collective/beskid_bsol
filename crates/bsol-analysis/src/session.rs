@@ -10,12 +10,14 @@ use bsol_pipeline::{
     },
     NullObserver, PipelineObserver,
 };
-use bsol_schema::{load_profile, load_profile_from_source, BsolError, SchemaProfile};
-use bsol_syntax::{parse_bsol_document, BsolDocument};
+use bsol_schema::{
+    embedded_profile_source, load_profile, load_profile_from_source, BsolError, SchemaProfile,
+};
+use bsol_syntax::{parse_bsol_document, BsolDocument, BsolLimits};
 
 use crate::migrate::{apply_migration, plan_migration};
 use crate::registry::ValidatorRegistry;
-use crate::resolver::{resolve_active_profile, CompositeSchemaSource};
+use crate::resolver::{resolve_active_profile, CompositeSchemaSource, MaterializedSchema};
 use crate::semantic::resolve_references;
 use crate::validate::{validate_with, ValidatedDocument};
 
@@ -105,17 +107,24 @@ impl AnalysisSession {
             document
         };
 
-        self.analyze_document(&document, profile, &options.base_dir)
+        let root = embedded_profile_source(&options.profile_name)
+            .ok_or_else(|| BsolError::UnknownProfile(options.profile_name.clone()))?;
+        let root = MaterializedSchema::owned(
+            root.to_string(),
+            format!("embedded:{}", options.profile_name),
+        );
+        self.analyze_document(&document, root, &options.base_dir)
     }
 
+    /// Resolve the import closure of `root` under the default budgets and validate `document`.
     pub fn analyze_document(
         &mut self,
         document: &BsolDocument,
-        profile: SchemaProfile,
+        root: MaterializedSchema,
         base_dir: &Path,
     ) -> Result<ValidatedDocument, BsolError> {
         let active = observe_phase(self.observer.as_mut(), SCHEMA_COLLECT, || {
-            resolve_active_profile(profile, base_dir, &self.source)
+            resolve_active_profile(root, base_dir, &self.source, &BsolLimits::default())
         })?;
         observe_phase(self.observer.as_mut(), SCHEMA_RESOLVE_FILE, || Ok(()))?;
 

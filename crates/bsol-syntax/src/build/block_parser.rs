@@ -23,11 +23,20 @@ pub fn parse_bsol_document_with_limits(
     source: &str,
     limits: &BsolLimits,
 ) -> Result<BsolDocument, BsolError> {
+    parse_bsol_document_counted(source, limits).map(|(document, _)| document)
+}
+
+/// Parse under explicit budgets and also return the native syntax node count (comments excluded),
+/// which aggregate budgets such as the schema import graph debit.
+pub fn parse_bsol_document_counted(
+    source: &str,
+    limits: &BsolLimits,
+) -> Result<(BsolDocument, usize), BsolError> {
     let context = ParseSource::new(source);
     super::limit_accounting::check_before_parse(&context, limits)?;
     let document = parse_document_unchecked(&context)?;
-    super::limit_accounting::check_document(&context, &document, limits)?;
-    Ok(document)
+    let nodes = super::limit_accounting::check_document(&context, &document, limits)?;
+    Ok((document, nodes))
 }
 
 fn parse_document_unchecked(context: &ParseSource<'_>) -> Result<BsolDocument, BsolError> {

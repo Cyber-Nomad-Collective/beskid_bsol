@@ -5,8 +5,12 @@ use super::parse_bsol_document;
 fn v06_qualified_import_reference_syntax() {
     let source = "config { target = @shared.node/alpha shape = ref(shared.node) nested = inline(shared.node) }";
     let document = parse_bsol_document(source).expect("qualified imported reference syntax");
-    let BsolItem::Assignment(target) = &document.blocks[0].items[0] else { panic!("reference assignment"); };
-    let BsolValue::Ref(reference) = &target.value else { panic!("reference value"); };
+    let BsolItem::Assignment(target) = &document.blocks[0].items[0] else {
+        panic!("reference assignment");
+    };
+    let BsolValue::Ref(reference) = &target.value else {
+        panic!("reference value");
+    };
     assert_eq!(reference.rule_kind.as_deref(), Some("shared.node"));
     assert_eq!(reference.label, "alpha");
     let written = crate::write_bsol_document(&document).expect("qualified reference writes");
@@ -14,8 +18,17 @@ fn v06_qualified_import_reference_syntax() {
     assert!(written.contains("ref(shared.node)"));
     assert!(written.contains("inline(shared.node)"));
     parse_bsol_document(&written).expect("qualified reference reparses");
-    for invalid in ["@shared./alpha", "@shared..node/alpha", "@.node/alpha", "ref(shared..node)", "inline(shared.)"] {
-        assert!(parse_bsol_document(&format!("config {{ target = {invalid} }}")).is_err(), "invalid qualifier {invalid}");
+    for invalid in [
+        "@shared./alpha",
+        "@shared..node/alpha",
+        "@.node/alpha",
+        "ref(shared..node)",
+        "inline(shared.)",
+    ] {
+        assert!(
+            parse_bsol_document(&format!("config {{ target = {invalid} }}")).is_err(),
+            "invalid qualifier {invalid}"
+        );
     }
 }
 

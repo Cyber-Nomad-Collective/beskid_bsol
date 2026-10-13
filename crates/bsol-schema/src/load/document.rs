@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use bsol_syntax::{BsolDocument, BsolItem, parse_bsol_document};
+use bsol_syntax::{parse_bsol_document, BsolDocument, BsolItem};
 
 use super::{
     imports_extends::{parse_extend_block, parse_import_schema},

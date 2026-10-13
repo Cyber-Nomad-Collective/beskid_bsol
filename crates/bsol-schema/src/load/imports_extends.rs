@@ -5,7 +5,8 @@ use bsol_syntax::{BsolBlock, BsolItem};
 use super::{rules::parse_block_rule, value_decode::assignment_string};
 use crate::{BsolError, ExtendSpec, ImportSchemaSpec, ImportSource, RuleScope};
 
-pub(super) fn parse_import_schema(block: &BsolBlock) -> Result<ImportSchemaSpec, BsolError> {
+/// Decode one `import_schema` declaration block.
+pub fn parse_import_schema(block: &BsolBlock) -> Result<ImportSchemaSpec, BsolError> {
     let name = block
         .label
         .as_ref()

@@ -15,8 +15,9 @@ pub use migrate::{
 pub use registry::ValidatorRegistry;
 pub use resolver::{
     load_fetched_profile, load_profile_text, parse_pckg_shorthand, profile_base_dir,
-    resolve_active_profile, resolve_profile, CompositeSchemaSource,
-    SchemaCollection, SchemaSource,
+    resolve_active_profile, resolve_import_graph, CompositeSchemaSource, ImportBinding,
+    ImportFailure, ImportGraph, ImportGraphFailure, MaterializedSchema, ResolvedSchema,
+    SchemaSource,
 };
 pub use semantic::resolve_references;
 pub use session::{

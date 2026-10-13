@@ -62,6 +62,14 @@ pub(super) const EMBEDDED_PROFILES: &[(&str, &str)] = &[
 ];
 
 /// Load an embedded schema profile by name (for example `project.v1`).
+/// Source text of an embedded profile, for callers that resolve it as an owned import root.
+pub fn embedded_profile_source(name: &str) -> Option<&'static str> {
+    EMBEDDED_PROFILES
+        .iter()
+        .find(|(id, _)| *id == name)
+        .map(|(_, src)| *src)
+}
+
 pub fn load_profile(name: &str) -> Result<SchemaProfile, BsolError> {
     let source = EMBEDDED_PROFILES
         .iter()

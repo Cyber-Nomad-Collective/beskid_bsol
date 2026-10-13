@@ -10,4 +10,6 @@ mod spans_errors;
 #[cfg(test)]
 mod tests;
 
-pub use block_parser::{parse_bsol_document, parse_bsol_document_with_limits};
+pub use block_parser::{
+    parse_bsol_document, parse_bsol_document_counted, parse_bsol_document_with_limits,
+};

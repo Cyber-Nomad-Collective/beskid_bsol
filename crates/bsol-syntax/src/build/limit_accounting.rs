@@ -73,7 +73,7 @@ pub(super) fn check_document(
     source: &ParseSource<'_>,
     document: &BsolDocument,
     limits: &BsolLimits,
-) -> Result<(), BsolError> {
+) -> Result<usize, BsolError> {
     let mut accounting = Accounting {
         source,
         limits,
@@ -83,6 +83,7 @@ pub(super) fn check_document(
     for block in &document.blocks {
         accounting.statement_block(block, 1);
     }
+    let nodes = accounting.events.len();
     accounting.comments();
     if accounting.events.len() > limits.max_nodes {
         accounting.events.sort_unstable();
@@ -96,7 +97,7 @@ pub(super) fn check_document(
     }
     match accounting.first {
         Some((offset, kind, message)) => Err(limit_error(source, offset, kind, message)),
-        None => Ok(()),
+        None => Ok(nodes),
     }
 }
 

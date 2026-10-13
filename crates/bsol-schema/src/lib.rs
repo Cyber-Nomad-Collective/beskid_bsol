@@ -11,8 +11,8 @@ pub use error::BsolError;
 use std::collections::HashMap;
 
 pub use load::{
-    load_profile, load_profile_from_document, load_profile_from_path, load_profile_from_source,
-    parse_profile_document,
+    embedded_profile_source, load_profile, load_profile_from_document, load_profile_from_path,
+    load_profile_from_source, parse_import_schema, parse_profile_document,
 };
 
 /// Loaded schema profile (for example `project.v1`).
