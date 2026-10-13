@@ -1,12 +1,45 @@
 # Shared BSOL conformance inputs
 
-These UTF-8 files are consumed by the Rust syntax integration tests and are intended for the future native corelib harness. Expected decoded scalars, canonical syntax and rejection policies live in `crates/bsol-syntax/tests/v06_grammar.rs` while the native harness and complete profile/typed corpus are still being implemented.
+This directory is the shared BSOL conformance corpus root. The Rust tests in
+this repository and the native Corelib tests read the same UTF-8 files.
 
-- `v06-values.bsol`: canonical @ attributes, escaped labels/scalars, exact numeric list items, empty map and nested RHS value blocks.
-- `runtime-manifest-v5.bsol`: portable snapshot of the compiler ABI-v5 runtime manifest at the accepted `95c203ff` compiler baseline. It tests the full pre-existing scalar/list/map syntax and canonical semantic round trip without depending on a compiler checkout path.
+## Corpus root convention
 
-These cases establish Rust bootstrap grammar coverage; they do not claim native execution, complete typed serialization or all-target corpus qualification.
+`BESKID_BSOL_CORPUS` names this directory (`beskid_bsol/conformance`), not
+`cases/`. Native tests append `cases/<set>/...` to read inputs and
+`../schemas/...` to read the embedded profiles in `beskid_bsol/schemas`.
+Release-case bindings and the release evidence producer use the same root.
 
-`cases/schema-constraints/` defines the native/Rust BSOL-06-04 constraint, typed-default, conditional and variant contract. `expectations.json` records exact input/profile SHA256 identities, positive typed values and negative diagnostic categories. Native `BsolSchemaConstraintTests` reads those same inputs through `BESKID_BSOL_CORPUS`. These are newly authored RED cases: native implementation and the paired standalone semantic harness have not yet passed them. In particular, the existing Rust textual-default and conditional-map behavior needs repair; syntax parsing alone does not establish semantic conformance.
+## Case sets and consumers
 
-`cases/builtin-profiles/` contains paired ordinary valid documents and syntactically valid missing-root negatives for all fourteen embedded profiles. Its expectations ledger pins input and profile SHA256 identities. Native `BsolBuiltinProfilesTests` validates the shared documents and requires the Cardinality diagnostic for absent mandatory roots. These cases are authored but not yet native-qualified; profile validation does not establish generated typed adapter qualification.
+The native consumers are targets of
+`compiler/corelib/beskid_corelib/tests/corelib_tests/corelib_tests.bproj`.
+
+| Input | Rust consumer | Native target |
+| --- | --- | --- |
+| `cases/v06-values.bsol` | `crates/bsol-syntax/tests/v06_grammar.rs` | `BsolSuite` |
+| `cases/runtime-manifest-v5.bsol` | `crates/bsol-syntax/tests/v06_grammar.rs` | `BsolSuite` |
+| `cases/builtin-profiles/` | `crates/bsol-analysis/tests/builtin_profiles_v06.rs` | `BsolSchemaTests` |
+| `cases/schema-structured/` | `crates/bsol/tests/v06_schema_structured.rs` | `BsolSchemaRulesSuite` |
+| `cases/schema-constraints/` | `crates/bsol/tests/v06_schema_constraints.rs` | `BsolSchemaRulesSuite` |
+| `cases/schema-patterns/` | `crates/bsol/tests/v06_schema_patterns.rs` | `BsolSchemaRulesSuite` |
+| `cases/schema-composition-references/` | none | `BsolSchemaRulesSuite` |
+| `cases/schema-migration/` | none | `BsolMigrationTests` |
+| `cases/serialization-v1/` | none | `BsolSerializationWireTests` |
+
+- `v06-values.bsol`: canonical `@` attributes, escaped labels and scalars,
+  exact numeric list items, an empty map and nested RHS value blocks.
+- `runtime-manifest-v5.bsol`: a portable snapshot of the compiler ABI-v5
+  runtime manifest. It tests the full scalar, list and map syntax and the
+  canonical round trip without a compiler checkout path.
+- `builtin-profiles/`: paired valid documents and missing-root negatives for
+  all fourteen embedded profiles. The negatives require the Cardinality
+  diagnostic.
+- `schema-*/` sets: `expectations.json` ledgers pin input and profile SHA-256
+  identities, positive typed values and negative diagnostic categories.
+- `serialization-v1/`: typed `serialization.v1` wire documents.
+
+The typed serialization targets `SerializationSuite`,
+`SerializationModEligibilitySuite` and `SerializationGeneratedSuite` do not
+read this corpus. They cover the format-neutral serialization library, the
+Serialization Mod eligibility rules and the generated adapters.
