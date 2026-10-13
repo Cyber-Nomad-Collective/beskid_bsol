@@ -1,10 +1,12 @@
 profile "schema.v1" {
+  version = 1
   rule "profile" {
     scope = top
     match = keyword
     keyword = profile
     label = required
     cardinality = one
+    field "version" { type = u32 required = false default = 1 }
     nested_extras = true
     nested "import_schema" {
       match = keyword

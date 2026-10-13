@@ -336,3 +336,74 @@ fn active_profile_composition_uses_the_bounded_closure() {
         "{error}"
     );
 }
+
+#[test]
+fn every_closure_source_declares_one_supported_version() {
+    let files = host(&[]);
+    for (source, message) in [
+        (
+            "profile \"root.v2\" { }",
+            "exactly one schema version required",
+        ),
+        (
+            "profile \"root.v2\" { version = 1 version = 2 }",
+            "exactly one schema version required",
+        ),
+        (
+            "profile \"root.v2\" { version = 3 }",
+            "supported schema version required",
+        ),
+        ("profile \"root.v2\" { version = \"2\" }", ""),
+    ] {
+        let result = resolve(source, &files, &BsolLimits::default());
+        if message.is_empty() {
+            assert_eq!(result, Ok(1), "{source}");
+        } else {
+            let error = result.expect_err(source);
+            assert_eq!(
+                (error.code.as_str(), error.message.as_str()),
+                ("InvalidProfileVersion", message)
+            );
+        }
+    }
+    let files = host(&[("a.bsol", "profile \"a.v2\" { }".to_string())]);
+    rejects(
+        &profile("root.v2", &[("a.v2", "a.bsol")]),
+        &files,
+        &BsolLimits::default(),
+        "InvalidProfileVersion",
+        "exactly one schema version required",
+    );
+}
+
+#[test]
+fn shipped_profiles_are_closure_roots_and_meta_valid() {
+    for name in [
+        "schema.v1",
+        "schema.v2",
+        "project.v1",
+        "project.v2",
+        "workspace.v1",
+        "runtime.v1",
+        "runtime.v2",
+        "board.v1",
+        "board.v2",
+        "board.v3",
+        "configuration.v1",
+        "configuration.v2",
+        "tools.config.v1",
+        "shell.pages.v1",
+    ] {
+        let source = bsol_schema::embedded_profile_source(name).expect(name);
+        let graph = resolve_import_graph(
+            MaterializedSchema::owned(source.to_string(), format!("embedded:{name}")),
+            Path::new("."),
+            &host(&[]),
+            &BsolLimits::default(),
+        )
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(graph.sources[graph.root].profile, name);
+        bsol_analysis::validate_profile_document(source)
+            .unwrap_or_else(|error| panic!("{name} is a valid schema document: {error}"));
+    }
+}

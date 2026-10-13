@@ -1,4 +1,5 @@
 profile "workspace.v1" {
+  version = 1
   rule "workspace" {
     scope = top
     match = keyword

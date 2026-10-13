@@ -1,4 +1,5 @@
 profile "shell.pages.v1" {
+  version = 1
   rule "pages" {
     scope = top
     match = keyword

@@ -1,4 +1,5 @@
 profile "runtime.v1" {
+  version = 1
   rule "manifest" {
     scope = top
     match = keyword

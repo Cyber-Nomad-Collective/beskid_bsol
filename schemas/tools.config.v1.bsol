@@ -1,4 +1,5 @@
 profile "tools.config.v1" {
+  version = 1
   rule "config" {
     scope = top
     match = keyword

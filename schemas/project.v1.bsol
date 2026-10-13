@@ -1,4 +1,5 @@
 profile "project.v1" {
+  version = 1
   rule "root" {
     scope = top
     match = free_ident

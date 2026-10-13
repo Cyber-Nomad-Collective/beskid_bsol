@@ -11,7 +11,9 @@ use bsol_schema::{
     load_profile, load_profile_from_document, load_profile_from_source, parse_import_schema,
     BsolError, ImportSchemaSpec, SchemaProfile,
 };
-use bsol_syntax::{parse_bsol_document_counted, BsolDocument, BsolItem, BsolLimits, BsolSpan};
+use bsol_syntax::{
+    parse_bsol_document_counted, BsolDocument, BsolItem, BsolLimits, BsolSpan, BsolValue,
+};
 use sha2::{Digest, Sha256};
 
 /// Owned schema source returned by a host, bound to its canonical identity and content digest.
@@ -274,6 +276,38 @@ impl Resolution<'_> {
             ));
         }
         let profile = label.to_string();
+        // Every source of a resolved closure declares exactly one supported schema version.
+        let mut versions = 0usize;
+        for item in &root.items {
+            let BsolItem::Assignment(property) = item else {
+                continue;
+            };
+            if property.key != "version" {
+                continue;
+            }
+            versions += 1;
+            let text = match &property.value {
+                BsolValue::Number(number) => Some(number.raw.as_str()),
+                BsolValue::QuotedString(quoted) => Some(quoted.value.as_str()),
+                _ => None,
+            };
+            if !matches!(text, Some("1" | "2")) {
+                return Err(failure(
+                    "InvalidProfileVersion",
+                    "supported schema version required",
+                    property.span,
+                    &profile,
+                ));
+            }
+        }
+        if versions != 1 {
+            return Err(failure(
+                "InvalidProfileVersion",
+                "exactly one schema version required",
+                root.span,
+                &profile,
+            ));
+        }
         let declarations = root
             .items
             .iter()

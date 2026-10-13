@@ -1,4 +1,5 @@
 profile "board.v2" {
+  version = 1
   rule "board" {
     scope = top
     match = keyword
