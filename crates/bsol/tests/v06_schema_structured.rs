@@ -164,7 +164,14 @@ fn validation_work_budget_covers_all_fields_in_one_document() {
     let values = std::iter::repeat_n("0", 60_000).collect::<Vec<_>>().join(",");
     let source = format!("config {{ first = [{values}] second = [{values}] }}");
     assert!(source.len() < 1_048_576);
-    let document = parse_bsol_document(&source).unwrap();
+    // 120000 list values exceed the default 100000-node syntax budget, so the caller raises it
+    // explicitly to reach the validation work budget.
+    assert!(parse_bsol_document(&source).is_err());
+    let syntax = bsol::BsolLimits {
+        max_nodes: 200_000,
+        ..bsol::BsolLimits::default()
+    };
+    let document = bsol::parse_bsol_document_with_limits(&source, &syntax).unwrap();
     let error = validate(&document, &profile).expect_err("document-wide work must be bounded");
     assert!(error.to_string().contains("work limit"), "{error}");
     let (start, end) = error.manifest_source_span().unwrap();

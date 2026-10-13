@@ -2,6 +2,7 @@ use super::parse_source::ParseSource;
 use pest::Parser;
 
 use crate::error::BsolError;
+use crate::limits::BsolLimits;
 use crate::parser::{BsolParser, Rule};
 
 use super::model::{BsolAttribute, BsolBlock, BsolDocument, BsolItem, BsolQuotedString};
@@ -12,10 +13,25 @@ use super::scanner_primitives::{
 };
 use super::spans_errors::{pest_error_with_offset, span_at};
 
-/// Parse Bsol source into the generic document AST.
+/// Parse Bsol source into the generic document AST under the default [`BsolLimits`].
 pub fn parse_bsol_document(source: &str) -> Result<BsolDocument, BsolError> {
+    parse_bsol_document_with_limits(source, &BsolLimits::default())
+}
+
+/// Parse Bsol source under explicit syntax budgets; the native parser's limit diagnostics.
+pub fn parse_bsol_document_with_limits(
+    source: &str,
+    limits: &BsolLimits,
+) -> Result<BsolDocument, BsolError> {
     let context = ParseSource::new(source);
-    let source = &context;
+    super::limit_accounting::check_before_parse(&context, limits)?;
+    let document = parse_document_unchecked(&context)?;
+    super::limit_accounting::check_document(&context, &document, limits)?;
+    Ok(document)
+}
+
+fn parse_document_unchecked(context: &ParseSource<'_>) -> Result<BsolDocument, BsolError> {
+    let source = context;
     let mut blocks = Vec::new();
     let mut cursor = 0usize;
     while cursor < source.len() {
@@ -117,7 +133,7 @@ pub(super) fn parse_block_at(
     ))
 }
 
-fn parse_block_items_in_range(
+pub(super) fn parse_block_items_in_range(
     source: &ParseSource<'_>,
     start: usize,
     end: usize,

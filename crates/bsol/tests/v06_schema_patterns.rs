@@ -1,5 +1,8 @@
 //! Shared Core.Text.Regex grammar/matching contract; no arbitrary regexcrate semantics.
-use bsol::{load_profile_from_source, parse_bsol_document, validate};
+use bsol::{
+    load_profile_from_source, parse_bsol_document, parse_bsol_document_with_limits, validate,
+    BsolLimitKind, BsolLimits,
+};
 fn fixture(name: &str, kind: &str) -> String {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/cases/schema-patterns");
@@ -26,7 +29,18 @@ fn check(name: &str, expected: &str) {
     }
     let profile = profile.expect("supported regexgrammar must load");
     let source = fixture(name, "input");
-    let document = parse_bsol_document(&source).expect("subject is valid quoted BSOL");
+    // Matches native `CheckPatternCase`: the over-limit subject needs an explicit syntax scalar
+    // raise to reach pattern validation; the default policy rejects it as a ScalarLimit.
+    let document = if name == "subject-over-limit" {
+        let limits = BsolLimits {
+            max_scalar_bytes: 1_048_577,
+            ..BsolLimits::default()
+        };
+        parse_bsol_document_with_limits(&source, &limits)
+    } else {
+        parse_bsol_document(&source)
+    }
+    .expect("subject is valid quoted BSOL");
     let result = validate(&document, &profile);
     if expected == "ok" {
         result.unwrap_or_else(|error| panic!("shared case {name} must match: {}", summary(&error)));
@@ -131,6 +145,18 @@ fn shared_pattern_subject_at_limit() {
 #[test]
 fn shared_pattern_subject_over_limit() {
     check("subject-over-limit", "PatternSubjectLimit");
+}
+#[test]
+fn shared_pattern_subject_over_limit_rejects_under_default_syntax_limits() {
+    let source = fixture("subject-over-limit", "input");
+    let error = parse_bsol_document(&source).expect_err("default scalar limit rejects the subject");
+    assert_eq!(error.limit_kind(), Some(BsolLimitKind::ScalarLimit));
+    assert!(
+        error.to_string().contains("decoded string byte limit"),
+        "native diagnostic message: {error}"
+    );
+    parse_bsol_document(&fixture("subject-at-limit", "input"))
+        .expect("subject at the limit parses");
 }
 #[test]
 fn shared_pattern_nested_work_limit() {

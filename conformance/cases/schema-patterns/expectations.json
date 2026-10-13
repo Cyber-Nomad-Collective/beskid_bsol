@@ -179,7 +179,8 @@
       "profileSha256": "043e9a26cc7ee125133628fd4fa09fc5d46512b401b55b072c3b6f5dae3006d0",
       "inputSha256": "d35d096a179e87a507308c6979287c0e6a9be58f31ac27556441ad5f3e42f4c0",
       "bsolMaxScalarBytes": 1048577,
-      "policyNote": "Explicit syntax scalar raise isolates PatternSubjectLimit; ordinary BSOL scalar default remains 1048576."
+      "defaultLimitsOutcome": "ScalarLimit",
+      "policyNote": "Under the default 1048576-byte scalar limit the native and Rust parsers reject this input with ScalarLimit (decoded string byte limit) before schema validation; the explicit syntax scalar raise to 1048577 isolates PatternSubjectLimit."
     },
     {
       "name": "nested-work-limit",

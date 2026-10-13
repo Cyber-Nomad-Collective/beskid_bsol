@@ -85,6 +85,17 @@ impl From<ParseError> for BsolError {
                 end,
             },
             ParseError::Parse(message) => Self::Parse(message),
+            ParseError::Limit {
+                kind,
+                message,
+                line,
+                offset,
+            } => Self::ParseAt {
+                line,
+                message: format!("{kind}: {message}"),
+                start: Some(offset),
+                end: Some(offset),
+            },
         }
     }
 }

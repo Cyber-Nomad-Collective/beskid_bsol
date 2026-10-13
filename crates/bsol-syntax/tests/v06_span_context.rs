@@ -106,8 +106,13 @@ fn v06_span_large_parse_timing_capture_preserves_full_work_case() {
         .join(",");
     let source = format!("config {{ first = [{values}] second = [{values}] }}");
     assert!(source.len() < 1_048_576);
+    // 120000 list values exceed the default 100000-node syntax budget; raise it explicitly.
+    let syntax = bsol_syntax::BsolLimits {
+        max_nodes: 200_000,
+        ..bsol_syntax::BsolLimits::default()
+    };
     let started = std::time::Instant::now();
-    let document = parse_bsol_document(&source).unwrap();
+    let document = bsol_syntax::parse_bsol_document_with_limits(&source, &syntax).unwrap();
     eprintln!(
         "v06_span_large_parse bytes={} values=120000 elapsed_ms={}",
         source.len(),
