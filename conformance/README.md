@@ -8,7 +8,11 @@ this repository and the native Corelib tests read the same UTF-8 files.
 `BESKID_BSOL_CORPUS` names this directory (`beskid_bsol/conformance`), not
 `cases/`. Native tests append `cases/<set>/...` to read inputs and
 `../schemas/...` to read the embedded profiles in `beskid_bsol/schemas`.
-Release-case bindings and the release evidence producer use the same root.
+
+Release packets archive one input, `bsol-corpus`, with source root
+`beskid_bsol` and only its `conformance/` and `schemas/` directories. Every
+BSOL case receives `BESKID_BSOL_CORPUS={input_root}/conformance`, so the same
+relative paths work in the checkout and in an extracted packet.
 
 ## Case sets and consumers
 
