@@ -6,6 +6,7 @@ Schema profiles are BSOL documents describing allowed block shapes.
 
 ```bsol
 profile "project.v1" {
+  version = 1
   rule "root" {
     scope = top
     match = free_ident
@@ -18,6 +19,8 @@ profile "project.v1" {
   rule "target" { ... }
 }
 ```
+
+`version` selects the schema format: `1` or `2`. A profile loaded on its own defaults to `1`. Every profile in an import closure must declare exactly one supported `version`; the resolver rejects it otherwise with `InvalidProfileVersion`.
 
 ## Rule matchers
 
